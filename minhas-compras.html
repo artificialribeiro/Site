@@ -27,6 +27,10 @@
         }
         .ticket-bg::before { left: -10px; border-right: 1px dashed #333; }
         .ticket-bg::after { right: -10px; border-left: 1px dashed #333; }
+        
+        .custom-scroll::-webkit-scrollbar { width: 4px; }
+        .custom-scroll::-webkit-scrollbar-track { background: #0a0a0a; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
     </style>
 
     <script src="seguranca.js"></script>
@@ -57,23 +61,61 @@
 
     </main>
 
-    <div id="modalComprovante" class="fixed inset-0 bg-black/90 z-[999] hidden items-center justify-center p-4 backdrop-blur-sm">
-        <div class="w-full max-w-sm ticket-bg rounded-xl p-8 modal-animate text-center shadow-2xl">
-            <h2 class="font-logo text-3xl text-white mb-2">Boutique Diniz</h2>
-            <p class="text-[10px] uppercase tracking-widest text-gray-500 mb-6">Comprovante de Retirada</p>
+    <div id="modalPendente" class="fixed inset-0 bg-black/95 z-[999] hidden items-center justify-center p-4 backdrop-blur-sm overflow-y-auto">
+        <div class="bg-[#050505] border border-yellow-800 w-full max-w-lg rounded-xl p-6 shadow-2xl shadow-yellow-900/20 modal-animate my-8 relative">
+            <button onclick="window.fecharModalPendente()" class="absolute top-4 right-4 text-gray-500 hover:text-white"><span class="material-symbols-outlined">close</span></button>
             
-            <div class="bg-white p-4 rounded-lg inline-block mb-6">
-                <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=BOUTIQUE_DINIZ_RETIRADA" id="qrRetirada" class="w-32 h-32">
+            <div class="flex flex-col items-center text-center mb-6 border-b border-gray-900 pb-6 mt-4">
+                <span class="material-symbols-outlined text-5xl text-yellow-500 mb-2 animate-bounce">notification_important</span>
+                <h2 class="text-2xl font-bold text-white font-logo tracking-wide">Atenção ao seu Pedido!</h2>
+                <p class="text-xs text-gray-400 mt-2">Identificamos que o pedido <b id="pendenteId" class="text-white"></b> encontra-se reservado e a aguardar a confirmação do banco.</p>
             </div>
 
-            <div class="text-left space-y-3 mb-6">
+            <div class="mb-4">
+                <h3 class="text-[10px] uppercase tracking-widest text-gray-500 mb-3">Looks Reservados neste pedido:</h3>
+                <div id="pendenteItens" class="flex flex-col gap-3 max-h-48 overflow-y-auto custom-scroll pr-2"></div>
+            </div>
+
+            <div class="flex justify-between items-center bg-[#111] p-4 rounded border border-yellow-900/30 mb-6">
+                <span class="text-sm text-gray-400">Total do Pedido:</span>
+                <span id="pendenteTotal" class="text-xl font-bold text-yellow-500">R$ 0,00</span>
+            </div>
+
+            <div class="flex flex-col gap-3">
+                <button id="btnPendenteVerificar" class="w-full bg-blue-600 text-white font-bold uppercase tracking-widest py-4 rounded hover:bg-blue-500 transition-colors flex items-center justify-center gap-2 shadow-lg hidden">
+                    <span class="material-symbols-outlined">sync</span> Consultar Banco Agora
+                </button>
+                <button id="btnPendentePagar" class="w-full bg-white text-black font-bold uppercase tracking-widest py-4 rounded hover:bg-gray-200 transition-colors flex items-center justify-center gap-2 shadow-lg">
+                    <span class="material-symbols-outlined">payments</span> Realizar Pagamento
+                </button>
+                <button onclick="window.fecharModalPendente()" class="text-gray-500 hover:text-white underline text-xs mt-2">Fechar aviso</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modalComprovante" class="fixed inset-0 bg-black/90 z-[999] hidden items-center justify-center p-4 backdrop-blur-sm overflow-y-auto">
+        <div class="w-full max-w-sm ticket-bg rounded-xl p-8 modal-animate text-center shadow-2xl my-8">
+            <h2 class="font-logo text-3xl text-white mb-2">Boutique Diniz</h2>
+            <p class="text-[10px] uppercase tracking-widest text-gray-500 mb-6">Ticket de Retirada Física</p>
+            
+            <div class="bg-white p-3 rounded-lg inline-block mb-6 shadow-inner">
+                <img src="" id="qrRetirada" class="w-32 h-32">
+            </div>
+
+            <div class="text-left space-y-3 mb-4 pb-4 border-b border-gray-800">
                 <p class="text-xs text-gray-400">Pedido: <span class="text-white font-bold float-right" id="compPedido">#0000</span></p>
                 <p class="text-xs text-gray-400">Cliente: <span class="text-white font-bold float-right truncate max-w-[150px]" id="compCliente">Nome</span></p>
                 <p class="text-xs text-gray-400">Status: <span class="text-green-400 font-bold float-right">PAGO</span></p>
             </div>
 
-            <p class="text-xs text-yellow-500 border border-yellow-900 bg-yellow-900/20 p-3 rounded mb-6">
-                Apresente esta tela no balcão da loja física para retirar a sua encomenda.
+            <div class="text-left mb-6">
+                <h3 class="text-[10px] uppercase tracking-widest text-gray-500 mb-3">Itens a Retirar:</h3>
+                <div id="compItens" class="flex flex-col gap-2 max-h-40 overflow-y-auto custom-scroll pr-2">
+                    </div>
+            </div>
+
+            <p class="text-[11px] text-yellow-500 border border-yellow-900 bg-yellow-900/20 p-3 rounded mb-6">
+                Apresente esta tela no balcão da loja para a atendente separar a sua encomenda.
             </p>
 
             <button onclick="window.fecharModalComprovante()" class="w-full bg-white text-black font-bold uppercase tracking-widest py-3 rounded hover:bg-gray-200">Fechar</button>
@@ -88,9 +130,8 @@
             </div>
 
             <div id="pagFormularios">
-                
                 <div class="mb-6 bg-[#0a0a0a] p-4 rounded border border-gray-800">
-                    <label class="block text-[10px] uppercase tracking-widest text-gray-500 mb-2">CPF do Comprador (Obrigatório para o Banco) *</label>
+                    <label class="block text-[10px] uppercase tracking-widest text-gray-500 mb-2">CPF do Comprador (Obrigatório) *</label>
                     <input type="text" id="novoCpfComprador" required class="w-full bg-[#111] border border-gray-700 rounded px-4 py-3 text-sm text-white outline-none focus:border-green-500 transition-colors" placeholder="000.000.000-00">
                 </div>
 
@@ -113,7 +154,7 @@
                     </label>
                     <label class="cursor-pointer text-center border border-gray-800 rounded p-3 hover:bg-[#111] transition-colors" onclick="window.selecionarNovaForma('giftcard')">
                         <span class="material-symbols-outlined text-gray-400 block mb-1">card_giftcard</span>
-                        <span class="text-[10px] font-bold uppercase">Gift Card</span>
+                        <span class="text-[10px] font-bold uppercase">Gift</span>
                     </label>
                 </div>
 
@@ -130,7 +171,6 @@
                                 <option value="1">1x sem juros</option>
                                 <option value="2">2x sem juros</option>
                                 <option value="3">3x sem juros</option>
-                                <option value="4">4x sem juros</option>
                             </select>
                         </div>
                     </div>
@@ -138,7 +178,7 @@
 
                 <div id="novoFormGift" class="hidden flex-col gap-4 bg-[#0a0a0a] p-4 rounded border border-gray-800 mb-6">
                     <input type="text" id="novoGiftNumero" class="w-full bg-[#111] border border-gray-800 rounded px-3 py-3 text-sm text-white outline-none" maxlength="16" placeholder="Cartão (16 dígitos)">
-                    <input type="password" id="novoGiftCvv" class="w-full bg-[#111] border border-gray-800 rounded px-3 py-3 text-sm text-white outline-none" maxlength="4" placeholder="Código de Segurança">
+                    <input type="password" id="novoGiftCvv" class="w-full bg-[#111] border border-gray-800 rounded px-3 py-3 text-sm text-white outline-none" maxlength="4" placeholder="Código">
                 </div>
 
                 <div class="flex justify-between items-center mb-6 pt-4 border-t border-gray-800">
@@ -160,21 +200,16 @@
                         <button onclick="window.copiarNovoPix()" class="bg-green-700 text-white px-6 rounded-r text-xs font-bold hover:bg-green-600 uppercase">Copiar</button>
                     </div>
                 </div>
-                <p class="text-sm text-yellow-500 animate-pulse mt-2 flex items-center gap-2"><span class="material-symbols-outlined">sync</span> Aguardando identificação do banco...</p>
+                <p class="text-sm text-yellow-500 animate-pulse mt-2 flex items-center gap-2"><span class="material-symbols-outlined">sync</span> Aguardando banco...</p>
             </div>
 
             <div id="novoBoletoArea" class="hidden flex-col items-center gap-5 text-center py-6">
                 <span class="material-symbols-outlined text-6xl text-yellow-500">receipt_long</span>
                 <h3 class="text-green-400 font-bold text-2xl font-logo">Boleto Gerado!</h3>
-                <p class="text-sm text-gray-400 mb-2 max-w-md">O seu pagamento foi emitido. Lembre-se que o banco pode demorar <b>até 48 horas úteis</b> para alterar o status para Pago no sistema.</p>
-                
-                <a id="novoLinkBoleto" href="#" target="_blank" class="bg-white text-black px-8 py-4 rounded font-bold uppercase tracking-widest hover:bg-gray-200 shadow-lg mt-4 mb-6 block">
-                    Imprimir / Ver Boleto
-                </a>
-                
+                <p class="text-sm text-gray-400 mb-2 max-w-md">O seu pagamento foi emitido. Pode demorar <b>até 48 horas úteis</b> para alterar o status para Pago no sistema.</p>
+                <a id="novoLinkBoleto" href="#" target="_blank" class="bg-white text-black px-8 py-4 rounded font-bold uppercase tracking-widest hover:bg-gray-200 shadow-lg mt-4 mb-6 block">Imprimir Boleto</a>
                 <button onclick="window.location.reload()" class="text-gray-500 hover:text-white underline text-sm transition-colors">Concluir e Voltar</button>
             </div>
-
         </div>
     </div>
 
