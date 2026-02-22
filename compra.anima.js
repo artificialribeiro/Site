@@ -61,7 +61,7 @@ async function iniciarCheckout() {
         const carrinhoStr = localStorage.getItem('boutique_dados_checkout');
 
         if (!sessaoStr || !carrinhoStr) {
-            mostrarErroFatal("Não conseguimos ler os dados do seu carrinho. Pode ter expirado.");
+            mostrarErroFatal("Não conseguimos ler os dados do seu carrinho.");
             return;
         }
 
@@ -77,7 +77,7 @@ async function iniciarCheckout() {
         await buscarEnderecoEcalcularFrete();
 
     } catch (e) {
-        mostrarErroFatal("Erro interno de comunicação. Verifique a sua conexão de rede.");
+        mostrarErroFatal("Erro interno de comunicação.");
     }
 }
 
@@ -99,10 +99,7 @@ function resolverImagem(caminho) {
 }
 
 function renderizarItensDoPedido() {
-    if (!dadosCarrinho || !dadosCarrinho.itens || dadosCarrinho.itens.length === 0) {
-        mostrarErroFatal("O seu carrinho parece estar vazio.");
-        return;
-    }
+    if (!dadosCarrinho || !dadosCarrinho.itens) return;
 
     let htmlItens = '';
     dadosCarrinho.itens.forEach(item => {
@@ -135,7 +132,7 @@ function renderizarItensDoPedido() {
 }
 
 // ==========================================
-// 3. API DE CUPOM E CÁLCULO DE VALORES
+// 3. API DE CUPOM E CÁLCULOS
 // ==========================================
 window.aplicarCupom = async function() {
     const inputCupom = document.getElementById('inputCupom');
@@ -162,18 +159,17 @@ window.aplicarCupom = async function() {
         if (res.ok && data.success && data.data.valido) {
             codigoCupomAtivo = codigo;
             valorDesconto = parseFloat(data.data.desconto);
-            alert(`Cupom ${codigo} aplicado! Desconto de R$ ${valorDesconto.toFixed(2).replace('.', ',')}`);
+            alert(`Cupom Aplicado! Desconto de R$ ${valorDesconto.toFixed(2).replace('.', ',')}`);
             inputCupom.disabled = true;
             btn.innerText = "ATIVO";
             btn.classList.replace('bg-gray-800', 'bg-green-700');
             atualizarResumoValores();
         } else {
-            alert(data.message || "Cupom inválido ou esgotado.");
+            alert(data.message || "Cupom expirado ou esgotado.");
             btn.innerText = "APLICAR";
             btn.disabled = false;
         }
     } catch (e) {
-        alert("Erro de rede ao validar cupom.");
         btn.innerText = "APLICAR";
         btn.disabled = false;
     }
@@ -182,7 +178,7 @@ window.aplicarCupom = async function() {
 async function buscarEnderecoEcalcularFrete() {
     const headers = await getAuthHeaders();
     const res = await fetch(`${API_CONFIG.baseUrl}/api/clientes/${cliente.id}/enderecos`, { headers });
-    if (!res.ok) throw new Error("Erro na API de endereços.");
+    if (!res.ok) throw new Error("Erro na API");
 
     const dados = await res.json();
     let enderecos = [];
@@ -192,7 +188,7 @@ async function buscarEnderecoEcalcularFrete() {
     enderecoAtivo = enderecos.find(e => e.principal) || enderecos[0];
 
     if (!enderecoAtivo) {
-        mostrarErroFatal("Você precisa salvar o seu endereço no carrinho antes de pagar.");
+        mostrarErroFatal("Você precisa salvar o seu endereço no carrinho antes.");
         return;
     }
 
@@ -237,8 +233,7 @@ function atualizarResumoValores() {
     }
     
     totalGeral = dadosCarrinho.subtotal + valorFrete - valorDesconto;
-    if(totalGeral < 0) totalGeral = 0; // Prevenção contra cupom maior que total
-    
+    if(totalGeral < 0) totalGeral = 0; 
     if(resumoTotal) resumoTotal.innerText = `R$ ${totalGeral.toFixed(2).replace('.', ',')}`;
 }
 
@@ -269,7 +264,7 @@ if(btnPagar) {
         const cpfLimpo = cpfRaw.replace(/\D/g, '');
         
         if (!cpfLimpo || cpfLimpo.length !== 11) {
-            alert("Por favor, preencha um CPF válido (11 dígitos).");
+            alert("Preencha um CPF válido (11 dígitos).");
             if(cpfCompradorInput) cpfCompradorInput.focus();
             return;
         }
@@ -281,10 +276,10 @@ if(btnPagar) {
             let resultadoPagamento = null;
             const payloadBaseAsaas = {
                 amount: parseFloat(totalGeral.toFixed(2)), 
-                name: cliente.nome_completo || cliente.nome || "Cliente Boutique Diniz",
+                name: cliente.nome_completo || cliente.nome || "Cliente Boutique",
                 cpf: cpfLimpo, 
                 email: cliente.email || 'cliente@boutiquediniz.com',
-                description: `Boutique Diniz - Pedido de Roupas ${codigoCupomAtivo ? '(Cupom: '+codigoCupomAtivo+')' : ''}`
+                description: `Boutique Diniz - Pedido ${codigoCupomAtivo ? '(Cupom: '+codigoCupomAtivo+')' : ''}`
             };
 
             if (metodo === 'pix') resultadoPagamento = await processarAsaasPix(payloadBaseAsaas);
@@ -302,7 +297,7 @@ if(btnPagar) {
                 recuperarTransacaoPendente({ metodo, payload: resultadoPagamento });
             } else {
                 await finalizarPedidoNoBackEnd('aprovado', resultadoPagamento.paymentId || 'TX-GIFT');
-                mostrarTelaSucesso();
+                dispararAnimacaoMovel();
             }
 
         } catch (error) {
@@ -330,7 +325,7 @@ async function processarAsaasPix(payloadBase) {
 async function processarAsaasBoleto(payloadBase) {
     const res = await fetch(`${ASAAS_API_BASE}/pay/boleto`, { method: 'POST', headers: getAsaasHeaders(), body: JSON.stringify(payloadBase) });
     const data = await res.json();
-    if(!res.ok) throw new Error(data.error || "Erro ao gerar o seu boleto.");
+    if(!res.ok) throw new Error(data.error || "Erro ao gerar boleto.");
     return data;
 }
 
@@ -341,10 +336,9 @@ async function processarAsaasCartaoCredito(payloadBase) {
     const cvv = document.getElementById('ccCvv').value;
     const parcelas = document.getElementById('ccParcelas').value;
 
-    if(!numero || !nome || !validade || !cvv) throw new Error("Preencha todos os dados do cartão.");
+    if(!numero || !nome || !validade || !cvv) throw new Error("Preencha todos os dados.");
     const partesValidade = validade.split('/');
-    if(partesValidade.length !== 2) throw new Error("Validade inválida. Use o formato MM/AA");
-
+    
     const payloadCartao = {
         ...payloadBase,
         postalCode: enderecoAtivo.cep.replace(/\D/g, ''), 
@@ -355,14 +349,14 @@ async function processarAsaasCartaoCredito(payloadBase) {
     
     const res = await fetch(`${ASAAS_API_BASE}/pay/credit-card`, { method: 'POST', headers: getAsaasHeaders(), body: JSON.stringify(payloadCartao) });
     const data = await res.json();
-    if(!res.ok) throw new Error(data.error || "O Cartão de Crédito foi recusado pela operadora.");
+    if(!res.ok) throw new Error(data.error || "Cartão Recusado.");
     return data;
 }
 
 async function processarGiftCardInterno() {
     const numero = document.getElementById('giftNumero').value;
     const cvv = document.getElementById('giftCvv').value;
-    if(!numero || !cvv) throw new Error("Preencha os dados do Cartão Presente da loja.");
+    if(!numero || !cvv) throw new Error("Preencha os dados do Cartão Presente.");
 
     const headers = await getAuthHeaders();
     const res = await fetch(`${API_CONFIG.baseUrl}/api/cartoes/resgatar`, {
@@ -371,9 +365,12 @@ async function processarGiftCardInterno() {
     });
     const data = await res.json();
     if(res.ok && data.success) return { success: true, paymentId: `GIFT-${data.data.id}` };
-    else throw new Error(data.message || "Saldo insuficiente no cartão presente.");
+    else throw new Error(data.message || "Saldo insuficiente.");
 }
 
+// ==========================================
+// 5. O COFRE DO PIX / BOLETO
+// ==========================================
 function salvarTransacaoPendente(dados) {
     localStorage.setItem('boutique_pending_tx', JSON.stringify(dados));
 }
@@ -421,17 +418,19 @@ function iniciarMonitoramentoPix(paymentId) {
             if (data.success && data.paid === true) {
                 clearInterval(pollingInterval);
                 await atualizarStatusPedidoInterno('aprovado');
-                mostrarTelaSucesso();
+                dispararAnimacaoMovel(); // <- Roda a animação quando o PIX cai!
             }
         } catch (e) {}
     }, 5000); 
 }
 
 window.concluirPedidoBoleto = function() {
-    // Boleto leva para a página da animação também, pois o pedido já está finalizado!
-    mostrarTelaSucesso();
+    dispararAnimacaoMovel();
 }
 
+// ==========================================
+// 6. FINALIZAÇÃO E ANIMAÇÃO MÁGICA
+// ==========================================
 async function finalizarPedidoNoBackEnd(statusPagamento, idExternoGateway) {
     try {
         const headers = await getAuthHeaders();
@@ -454,18 +453,16 @@ async function finalizarPedidoNoBackEnd(statusPagamento, idExternoGateway) {
         };
 
         const res = await fetch(`${API_CONFIG.baseUrl}/api/pedidos`, {
-            method: 'POST',
-            headers: headersJson,
-            body: JSON.stringify(payloadPedido)
+            method: 'POST', headers: headersJson, body: JSON.stringify(payloadPedido)
         });
 
         if(res.ok) {
             const dataPedido = await res.json();
             if (dataPedido.data && dataPedido.data.id) localStorage.setItem('boutique_last_order_id', dataPedido.data.id);
 
-            [span_1](start_span)// GATILHO OFICIAL: Limpa e Esvazia o Carrinho no Banco de Dados[span_1](end_span)
-            await fetch(`${API_CONFIG.baseUrl}/api/carrinho/${cliente.id}/limpar`, { 
-                method: 'POST', 
+            [span_2](start_span)[span_3](start_span)// GATILHO OFICIAL: Limpa o Carrinho no Banco usando DELETE[span_2](end_span)[span_3](end_span)
+            await fetch(`${API_CONFIG.baseUrl}/api/carrinho/${cliente.id}`, { 
+                method: 'DELETE', 
                 headers: headersJson 
             });
             localStorage.setItem('boutique_cart_qty', '0'); 
@@ -477,7 +474,6 @@ async function atualizarStatusPedidoInterno(novoStatus) {
     try {
         const pedidoId = localStorage.getItem('boutique_last_order_id');
         if(!pedidoId) return;
-
         const headers = await getAuthHeaders();
         await fetch(`${API_CONFIG.baseUrl}/api/pedidos/${pedidoId}/status-pagamento`, {
             method: 'PATCH',
@@ -487,10 +483,34 @@ async function atualizarStatusPedidoInterno(novoStatus) {
     } catch (e) {}
 }
 
-function mostrarTelaSucesso() {
+// Esta função injeta o script "animacao.compra.js" direto na tela e clica no botão sem redirecionar!
+window.dispararAnimacaoMovel = function() {
     localStorage.removeItem('boutique_pending_tx');
     localStorage.removeItem('boutique_dados_checkout');
     
-    // REDIRECIONA PARA A TELA DE SUCESSO COM ANIMAÇÃO!
-    window.location.href = 'sucesso.html';
+    // Oculta a tela do cofre para não atrapalhar
+    if(transactionState) transactionState.classList.add('hidden');
+
+    // Cria a injeção do arquivo da animação no topo da tela atual
+    const script = document.createElement('script');
+    script.src = 'animacao.compra.js';
+    document.body.appendChild(script);
+
+    // Sistema que procura o botão da animação e clica sozinho
+    let tentativas = 0;
+    const radarBotao = setInterval(() => {
+        const btn = document.getElementById('bd-btnOrder');
+        if (btn) {
+            clearInterval(radarBotao);
+            btn.style.display = 'none'; // Esconde para a cliente não ver
+            btn.click(); // Chama a Van da Boutique Diniz!
+            
+            // Redireciona para o histórico de compras após 14.5 segundos (quando a tela escurece)
+            setTimeout(() => {
+                window.location.href = 'minhas-compras.html';
+            }, 14500);
+        }
+        if(tentativas > 50) clearInterval(radarBotao); 
+        tentativas++;
+    }, 200);
 }
