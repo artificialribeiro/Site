@@ -236,37 +236,104 @@ function renderizarPedidos(pedidos) {
         }
 
         // ── RASTREIO ──
+        // Mostra para todos os pedidos de envio (não retirada) que já foram pagos
         let rastreioHtml = '';
-        if (!isRetirada && (p.codigo_rastreio || p.link_acompanhamento || p.data_prevista_entrega)) {
+        if (!isRetirada && isPago && !isCachoeiro) {
+            const temCodigo = !!(p.codigo_rastreio);
             rastreioHtml = `
-                <div class="mt-3 p-4 bg-[#0a0a0a] border border-blue-900/40 rounded-lg">
+                <div class="mt-3 p-4 bg-[#0a0a0a] border ${temCodigo ? 'border-blue-900/50' : 'border-gray-800'} rounded-lg">
+                    <p class="text-[10px] ${temCodigo ? 'text-blue-400' : 'text-gray-500'} uppercase tracking-widest flex items-center gap-1 mb-3">
+                        <span class="material-symbols-outlined text-[14px]">local_shipping</span>
+                        Rastreamento da Encomenda
+                    </p>
+                    ${temCodigo ? `
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                        <div>
+                            <p class="text-[10px] text-gray-500 mb-1">Código de Rastreio</p>
+                            <p class="text-sm font-mono text-white font-bold tracking-wider">${p.codigo_rastreio}</p>
+                            ${p.data_prevista_entrega ? `<p class="text-xs text-gray-400 mt-1">📅 Previsão de entrega: <b class="text-green-400">${new Date(p.data_prevista_entrega).toLocaleDateString('pt-BR')}</b></p>` : ''}
+                        </div>
+                        ${p.link_acompanhamento ? `
+                        <a href="${p.link_acompanhamento}" target="_blank" class="bg-blue-600 text-white px-5 py-2.5 rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-blue-500 transition-colors text-center whitespace-nowrap flex items-center gap-2 justify-center">
+                            <span class="material-symbols-outlined text-[16px]">open_in_new</span> Rastrear Encomenda
+                        </a>` : `
+                        <a href="https://rastreamento.correios.com.br/app/index.php" target="_blank" class="bg-gray-700 text-white px-5 py-2.5 rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-gray-600 transition-colors text-center whitespace-nowrap flex items-center gap-2 justify-center">
+                            <span class="material-symbols-outlined text-[16px]">open_in_new</span> Rastrear nos Correios
+                        </a>`}
+                    </div>` : `
+                    <div class="flex items-center gap-3">
+                        <span class="material-symbols-outlined text-gray-600 text-[28px] animate-pulse">schedule</span>
+                        <div>
+                            <p class="text-sm text-gray-300 font-medium">Código de rastreio ainda não disponível</p>
+                            <p class="text-[11px] text-gray-500 mt-0.5">A loja postará o seu pedido em breve e o código aparecerá aqui automaticamente.</p>
+                        </div>
+                    </div>`}
+                </div>`;
+        }
+
+        // Rastreio para Cachoeiro com link informado (caso raro, mas possível)
+        if (!isRetirada && isCachoeiro && isPago && p.codigo_rastreio) {
+            rastreioHtml = `
+                <div class="mt-3 p-4 bg-[#0a0a0a] border border-blue-900/50 rounded-lg">
                     <p class="text-[10px] text-blue-400 uppercase tracking-widest flex items-center gap-1 mb-2">
                         <span class="material-symbols-outlined text-[14px]">local_shipping</span> Rastreamento
                     </p>
-                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
-                        <div>
-                            <p class="text-xs text-gray-400">Código: <span class="font-mono text-white">${p.codigo_rastreio || 'Atualizando...'}</span></p>
-                            ${p.data_prevista_entrega ? `<p class="text-xs text-gray-400 mt-1">Previsão: <b class="text-green-400">${new Date(p.data_prevista_entrega).toLocaleDateString('pt-BR')}</b></p>` : ''}
-                        </div>
-                        ${p.link_acompanhamento ? `<a href="${p.link_acompanhamento}" target="_blank" class="bg-blue-600 text-white px-5 py-2 rounded text-xs font-bold uppercase tracking-widest hover:bg-blue-500 transition-colors text-center whitespace-nowrap">Acompanhar</a>` : ''}
-                    </div>
+                    <p class="text-sm font-mono text-white">${p.codigo_rastreio}</p>
+                    ${p.link_acompanhamento ? `<a href="${p.link_acompanhamento}" target="_blank" class="mt-2 inline-block text-xs text-blue-400 underline">Acompanhar</a>` : ''}
                 </div>`;
         }
 
         // ── AVISOS ──
         let blocosAviso = '';
+
+        // Boleto pendente
         if (isAguardando && p.pagamento_tipo === 'boleto') {
-            blocosAviso += `<div class="mt-3 p-3 rounded bg-yellow-900/20 border border-yellow-800/50 text-xs text-yellow-500">⚠️ <b>Aviso:</b> O banco pode demorar <b>até 48 horas úteis</b> para compensar o Boleto.</div>`;
+            blocosAviso += `<div class="mt-3 p-3 rounded-lg bg-yellow-900/20 border border-yellow-800/50 text-xs text-yellow-400">
+                ⚠️ <b>Boleto Bancário:</b> O banco pode demorar <b>até 48 horas úteis</b> para compensar. O estoque está reservado enquanto aguardamos.
+            </div>`;
         }
-        // Aviso motoboy APENAS se: pago + envio (não retirada) + cidade é Cachoeiro
-        if (isPago && !isRetirada && isCachoeiro) {
-            blocosAviso += `<div class="mt-3 p-3 rounded bg-blue-900/20 border border-blue-800/50 text-xs text-blue-400">🛵 <b>Entrega Local:</b> O seu pedido será enviado por motoboy. A loja (Débora) entrará em contacto em breve.</div>`;
-        }
+
+        // ── RETIRADA NA LOJA ──
         if (isRetirada && isAguardando) {
-            blocosAviso += `<div class="mt-3 p-3 rounded bg-purple-900/20 border border-purple-800/50 text-xs text-purple-300">🏬 <b>Retirada na Loja:</b> Gere a Ordem de Retirada e apresente no balcão. Pagamento pode ser feito na hora.</div>`;
+            blocosAviso += `<div class="mt-3 p-3 rounded-lg bg-purple-900/20 border border-purple-800/50 text-xs text-purple-300">
+                🏬 <b>Retirada na Loja:</b> Gere a Ordem de Retirada abaixo e apresente no balcão da loja. O pagamento também pode ser efetuado diretamente na loja.
+            </div>`;
         }
         if (isRetirada && isPago) {
-            blocosAviso += `<div class="mt-3 p-3 rounded bg-green-900/20 border border-green-800/50 text-xs text-green-400">✅ <b>Pago e pronto para retirar!</b> Gere a Ordem de Retirada e apresente no balcão da loja.</div>`;
+            blocosAviso += `<div class="mt-3 p-3 rounded-lg bg-green-900/20 border border-green-800/50 text-xs text-green-400">
+                ✅ <b>Pagamento confirmado — Pronto para retirar!</b> Gere a Ordem de Retirada abaixo e apresente no balcão da loja com um documento de identificação.
+            </div>`;
+        }
+
+        // ── ENVIO — Cachoeiro de Itapemirim (Motoboy) ──
+        if (!isRetirada && isCachoeiro && isPago) {
+            blocosAviso += `<div class="mt-3 p-3 rounded-lg bg-blue-900/20 border border-blue-800/50 text-xs text-blue-300">
+                🛵 <b>Entrega Local — Cachoeiro de Itapemirim:</b> O seu pedido será entregue por motoboy. A loja entrará em contacto em breve para combinar a entrega.
+            </div>`;
+        }
+        if (!isRetirada && isCachoeiro && isAguardando) {
+            blocosAviso += `<div class="mt-3 p-3 rounded-lg bg-blue-900/20 border border-blue-800/40 text-xs text-blue-400">
+                🛵 <b>Entrega Local — Cachoeiro de Itapemirim:</b> Após a confirmação do pagamento, o seu pedido será entregue por motoboy.
+            </div>`;
+        }
+
+        // ── ENVIO — Fora de Cachoeiro (Correios/Transportadora) ──
+        if (!isRetirada && !isCachoeiro && isPago) {
+            const temRastreio = !!(p.codigo_rastreio);
+            if (temRastreio) {
+                blocosAviso += `<div class="mt-3 p-3 rounded-lg bg-blue-900/20 border border-blue-800/50 text-xs text-blue-300">
+                    📦 <b>Encomenda Postada!</b> O seu pedido já foi enviado pelos Correios/Transportadora. Acompanhe o rastreio acima.
+                </div>`;
+            } else {
+                blocosAviso += `<div class="mt-3 p-3 rounded-lg bg-gray-900/40 border border-gray-700/50 text-xs text-gray-400">
+                    📦 <b>Envio a caminho:</b> O seu pedido está sendo preparado. Em breve a loja postará nos Correios e o código de rastreio aparecerá aqui automaticamente — fique de olho nesta página!
+                </div>`;
+            }
+        }
+        if (!isRetirada && !isCachoeiro && isAguardando) {
+            blocosAviso += `<div class="mt-3 p-3 rounded-lg bg-gray-900/40 border border-gray-700/50 text-xs text-gray-500">
+                📦 <b>Envio via Correios:</b> Após a confirmação do pagamento, a loja preparará e postará o seu pedido. O código de rastreio aparecerá aqui nesta página.
+            </div>`;
         }
 
         // ── BOTÕES ──
@@ -759,22 +826,19 @@ window.abrirModalPendente = function(pedido) {
             const nome = item.produto_nome || item.nome || "Produto Exclusivo";
             const imgFinal = item.imagem || null;
             const qtd = item.quantidade || 1;
-            
-            let nomeFilial = "Matriz (Cachoeiro)";
-            if (item.filial_nome) nomeFilial = item.filial_nome;
-            else if (pedido.filial && pedido.filial.nome) nomeFilial = pedido.filial.nome;
+            const tam = item.tamanho ? ` · Tam: ${item.tamanho}` : '';
+            const cor = item.cor      ? ` · Cor: ${item.cor}`    : '';
 
             htmlItens += `
                 <div class="flex items-center gap-3 bg-[#0a0a0a] border border-gray-800 p-2 rounded">
-                    <div class="w-12 h-16 bg-[#111] rounded overflow-hidden flex-shrink-0">
-                        <img src="${resolverImagem(imgFinal)}" class="w-full h-full object-cover">
+                    <div class="w-12 h-16 bg-[#111] rounded overflow-hidden flex-shrink-0 flex items-center justify-center">
+                        ${imgFinal
+                            ? `<img src="${resolverImagem(imgFinal)}" class="w-full h-full object-cover">`
+                            : `<span class="material-symbols-outlined text-gray-700 text-xl">checkroom</span>`}
                     </div>
                     <div class="flex-1 text-left min-w-0">
                         <h4 class="text-sm font-bold text-white truncate">${nome}</h4>
-                        <p class="text-[10px] text-gray-500 uppercase tracking-widest mt-1">
-                            Qtd: ${qtd}x <br> 
-                            <span class="text-yellow-600">📍 Local: ${nomeFilial}</span>
-                        </p>
+                        <p class="text-[10px] text-gray-500 uppercase tracking-widest mt-1">Qtd: ${qtd}x${tam}${cor}</p>
                     </div>
                 </div>
             `;
