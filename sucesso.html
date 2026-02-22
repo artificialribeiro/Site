@@ -3,10 +3,11 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Boutique Diniz - Pedido Confirmado!</title>
+    <title>Boutique Diniz - Sucesso!</title>
+    
     <style>
+        /* Fundo preto limpo e esconde o botão original para a magia ser automática */
         body { background-color: #050505; margin: 0; overflow: hidden; }
-        /* Esconde o botão para que a animação arranque sozinha como magia */
         #bd-btnOrder { display: none !important; }
     </style>
 </head>
@@ -17,21 +18,26 @@
     <script>
         window.onload = () => {
             let tentativas = 0;
+            // Fica à procura do botão gerado pelo seu script de animação
             const radar = setInterval(() => {
                 const btn = document.getElementById('bd-btnOrder');
                 if (btn) {
                     clearInterval(radar);
-                    btn.click(); // Inicia a Van da Boutique Diniz!
                     
-                    // Redireciona para o histórico após a tela escurecer (14.5 segundos)
+                    // Clica no botão invisível para a Van entrar em cena!
+                    btn.click(); 
+                    
+                    // Aguarda a animação acabar e a tela ficar preta (14.5 segundos) para enviar para as compras
                     setTimeout(() => {
                         window.location.href = 'minhas-compras.html';
                     }, 14500);
                 }
+                
                 if(tentativas > 50) clearInterval(radar); // Trava de segurança
                 tentativas++;
             }, 100);
         };
     </script>
+
 </body>
 </html>
