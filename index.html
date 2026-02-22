@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boutique Diniz | Moda Feminina Exclusiva</title>
+    
+    <link rel="icon" type="image/png" href="logo.png">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Satisfy&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,300,0,0" rel="stylesheet" />
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: { background: "#000000", surface: "#0a0a0a", primary: "#ffffff", border: "#222" },
+                    fontFamily: { logo: ["Satisfy", "cursive"], body: ["Montserrat", "sans-serif"] }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { background-color: #000; color: #fff; overflow-x: hidden; font-family: 'Montserrat', sans-serif; }
+        .font-logo { font-family: 'Satisfy', cursive; }
+        
+        /* Classes essenciais para o Carrossel Touch funcionar liso no celular */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* Efeitos suaves nas fotos (Transição Base64) */
+        .product-card .img-hover { opacity: 0; transition: opacity 0.5s ease, transform 0.5s ease; }
+        .product-card:hover .img-hover { opacity: 1; transform: scale(1.05); }
+        .product-card:hover .img-main { opacity: 0; }
+        .img-main { transition: opacity 0.5s ease, transform 0.5s ease; }
+        .product-card:hover .img-main-only { transform: scale(1.05); }
+    </style>
+
+    <script src="motor-ia.js"></script>
+</head>
+<body class="bg-background text-primary min-h-screen flex flex-col antialiased">
+
+    <div id="app-header"></div>
+
+    <main class="flex-grow pt-8 pb-10">
+        
+        <section class="w-full max-w-7xl mx-auto md:p-4 mb-8">
+            <div id="bannerContainer" class="flex overflow-x-auto snap-x snap-mandatory no-scrollbar md:rounded-lg bg-surface gap-4"></div>
+        </section>
+
+        <section class="max-w-7xl mx-auto px-4 mb-14">
+            <h2 class="text-xs uppercase tracking-[0.3em] text-gray-400 mb-6">Nossas Categorias</h2>
+            <div id="categoriasContainer" class="flex overflow-x-auto gap-6 snap-x snap-mandatory no-scrollbar pb-4"></div>
+        </section>
+
+        <section id="sectionRecomendados" class="max-w-7xl mx-auto px-4 mb-16 hidden">
+            <div class="flex items-center gap-2 mb-6 border-b border-gray-900 pb-2">
+                <span class="material-symbols-outlined text-yellow-500">auto_awesome</span>
+                <h2 class="text-xl font-light text-white">Separados para Você</h2>
+            </div>
+            <div id="recomendadosContainer" class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6"></div>
+        </section>
+
+        <section class="max-w-7xl mx-auto px-4 mb-16">
+            <h2 class="text-xl font-light text-white mb-6">Ofertas Exclusivas</h2>
+            <div id="descontosContainer" class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6"></div>
+        </section>
+
+        <section id="sectionRecentes" class="max-w-7xl mx-auto px-4 mb-16 hidden">
+            <h2 class="text-xl font-light text-white mb-6">Vistos Recentemente</h2>
+            <div id="recentesContainer" class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6"></div>
+        </section>
+
+        <section class="max-w-7xl mx-auto px-4 mb-16">
+            <h2 class="text-xl font-light text-white mb-6" id="nomeCategoriaDestaque">Novidades</h2>
+            <div id="produtosCategoriaContainer" class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6"></div>
+        </section>
+    </main>
+
+    <div id="app-footer"></div>
+
+    <script type="module">
+        // Passo 1: Importa o construtor do Layout
+        import { inicializarLayout } from './layout.js';
+        
+        // Passo 2: Injeta fisicamente o Cabeçalho e o Rodapé na tela neste exato segundo
+        inicializarLayout();
+
+        // Passo 3: Só AGORA que o cabeçalho existe, chamamos o motor de busca
+        import('./buscador.js').then(() => {
+            console.log("Buscador acoplado ao Cabeçalho.");
+        });
+
+        // Passo 4: Por fim, puxamos as roupas da API e acionamos a IA
+        import('./site-logic.js').then(() => {
+            console.log("Vitrine e IA carregadas.");
+        });
+    </script>
+</body>
+</html>

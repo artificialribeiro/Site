@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout Seguro | Boutique Diniz</title>
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="icon" type="image/png" href="logo.png">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Satisfy&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,300,0,0" rel="stylesheet" />
+
+    <style>
+        body { background-color: #000; color: #fff; font-family: 'Montserrat', sans-serif; }
+        .font-logo { font-family: 'Satisfy', cursive; }
+        
+        /* Ocultar setas dos inputs de número */
+        input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        
+        /* Estilos do Radio Button Customizado */
+        .payment-radio:checked + div { border-color: #fff; background-color: #111; }
+        .payment-radio:checked + div .radio-dot { background-color: #fff; border-color: #fff; }
+    </style>
+
+    <script src="seguranca.js"></script>
+</head>
+<body class="bg-[#000000] text-white min-h-screen flex flex-col antialiased">
+
+    <header class="w-full border-b border-gray-900 bg-[#0a0a0a] py-4 sticky top-0 z-50">
+        <div class="max-w-4xl mx-auto px-4 flex justify-between items-center">
+            <h1 class="font-logo text-2xl text-white">Boutique Diniz</h1>
+            <div class="flex items-center gap-2 text-green-500 text-xs font-bold uppercase tracking-widest">
+                <span class="material-symbols-outlined text-[18px]">lock</span> Ambiente Seguro
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow pt-8 pb-16 max-w-4xl mx-auto w-full px-4">
+        
+        <div id="loadingState" class="flex items-center justify-center py-20 flex-col gap-4">
+            <span class="material-symbols-outlined animate-spin text-4xl text-gray-500">sync</span>
+            <p class="text-xs uppercase tracking-widest text-gray-500">Verificando segurança do ambiente...</p>
+        </div>
+
+        <div id="checkoutForm" class="hidden flex-col gap-8">
+            
+            <section class="bg-[#050505] border border-gray-900 rounded-lg p-6">
+                <h2 class="text-sm uppercase tracking-widest text-gray-400 mb-6 flex items-center gap-2 border-b border-gray-900 pb-2">
+                    <span class="material-symbols-outlined text-[18px]">local_shipping</span> 1. Entrega
+                </h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    <label class="cursor-pointer relative">
+                        <input type="radio" name="tipo_entrega" value="correios" class="payment-radio sr-only" checked onchange="calcularFrete()">
+                        <div class="border border-gray-800 rounded p-4 flex items-center gap-3 transition-colors hover:border-gray-600 h-full">
+                            <div class="radio-dot w-4 h-4 rounded-full border-2 border-gray-600 transition-colors"></div>
+                            <div>
+                                <h3 class="font-bold text-sm">Receber em Casa</h3>
+                                <p class="text-xs text-gray-500 mt-1" id="txtEnderecoDestino">Carregando...</p>
+                            </div>
+                        </div>
+                    </label>
+
+                    <label class="cursor-pointer relative">
+                        <input type="radio" name="tipo_entrega" value="retirada" class="payment-radio sr-only" onchange="calcularFrete()">
+                        <div class="border border-gray-800 rounded p-4 flex items-center gap-3 transition-colors hover:border-gray-600 h-full">
+                            <div class="radio-dot w-4 h-4 rounded-full border-2 border-gray-600 transition-colors"></div>
+                            <div>
+                                <h3 class="font-bold text-sm">Retirar na Loja</h3>
+                                <p class="text-xs text-green-400 mt-1">Grátis - Disponível em 1h útil</p>
+                            </div>
+                        </div>
+                    </label>
+                </div>
+
+                <div id="boxCalculoFrete" class="bg-[#111] p-4 rounded flex justify-between items-center text-sm">
+                    <span class="text-gray-400">Valor do Frete (Sedex/Transporte)</span>
+                    <span id="valorFreteUI" class="font-bold text-white">Calculando...</span>
+                </div>
+            </section>
+
+            <section class="bg-[#050505] border border-gray-900 rounded-lg p-6">
+                <h2 class="text-sm uppercase tracking-widest text-gray-400 mb-6 flex items-center gap-2 border-b border-gray-900 pb-2">
+                    <span class="material-symbols-outlined text-[18px]">payments</span> 2. Pagamento
+                </h2>
+
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+                    <label class="cursor-pointer">
+                        <input type="radio" name="metodo_pagamento" value="pix" class="payment-radio sr-only" checked onchange="alternarFormularioPagamento()">
+                        <div class="border border-gray-800 rounded p-3 text-center flex flex-col items-center justify-center gap-2 h-full">
+                            <img src="https://logospng.org/download/pix/logo-pix-icone-512.png" alt="PIX" class="h-6 opacity-80">
+                            <span class="text-xs font-bold">PIX</span>
+                        </div>
+                    </label>
+
+                    <label class="cursor-pointer">
+                        <input type="radio" name="metodo_pagamento" value="credit" class="payment-radio sr-only" onchange="alternarFormularioPagamento()">
+                        <div class="border border-gray-800 rounded p-3 text-center flex flex-col items-center justify-center gap-2 h-full">
+                            <span class="material-symbols-outlined text-gray-400">credit_card</span>
+                            <span class="text-xs font-bold">Cartão Crédito</span>
+                        </div>
+                    </label>
+                    
+                    <label class="cursor-pointer">
+                        <input type="radio" name="metodo_pagamento" value="boleto" class="payment-radio sr-only" onchange="alternarFormularioPagamento()">
+                        <div class="border border-gray-800 rounded p-3 text-center flex flex-col items-center justify-center gap-2 h-full">
+                            <span class="material-symbols-outlined text-gray-400">receipt_long</span>
+                            <span class="text-xs font-bold">Boleto</span>
+                        </div>
+                    </label>
+
+                    <label class="cursor-pointer">
+                        <input type="radio" name="metodo_pagamento" value="giftcard" class="payment-radio sr-only" onchange="alternarFormularioPagamento()">
+                        <div class="border border-gray-800 rounded p-3 text-center flex flex-col items-center justify-center gap-2 h-full">
+                            <span class="material-symbols-outlined text-gray-400">card_giftcard</span>
+                            <span class="text-xs font-bold">Gift Card</span>
+                        </div>
+                    </label>
+                </div>
+
+                <div id="formCartao" class="hidden flex-col gap-4 bg-[#0a0a0a] p-4 rounded border border-gray-800">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-[10px] uppercase tracking-widest text-gray-500 mb-1">Número do Cartão</label>
+                            <input type="text" id="ccNumero" class="w-full bg-[#111] border border-gray-800 rounded px-3 py-2 text-sm text-white outline-none" placeholder="0000 0000 0000 0000">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] uppercase tracking-widest text-gray-500 mb-1">Nome no Cartão</label>
+                            <input type="text" id="ccNome" class="w-full bg-[#111] border border-gray-800 rounded px-3 py-2 text-sm text-white outline-none" placeholder="NOME IMPRESSO">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-[10px] uppercase tracking-widest text-gray-500 mb-1">Validade (MM/AA)</label>
+                            <input type="text" id="ccValidade" class="w-full bg-[#111] border border-gray-800 rounded px-3 py-2 text-sm text-white outline-none" placeholder="12/28">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] uppercase tracking-widest text-gray-500 mb-1">CVV</label>
+                            <input type="password" id="ccCvv" class="w-full bg-[#111] border border-gray-800 rounded px-3 py-2 text-sm text-white outline-none" placeholder="123" maxlength="4">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] uppercase tracking-widest text-gray-500 mb-1">Parcelas</label>
+                            <select id="ccParcelas" class="w-full bg-[#111] border border-gray-800 rounded px-3 py-2 text-sm text-white outline-none">
+                                <option value="1">1x sem juros</option>
+                                <option value="2">2x sem juros</option>
+                                <option value="3">3x sem juros</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="formGiftCard" class="hidden flex-col gap-4 bg-[#0a0a0a] p-4 rounded border border-gray-800">
+                    <p class="text-xs text-gray-400 mb-2">Utilize o saldo do seu Cartão Presente Boutique Diniz.</p>
+                    <div class="grid grid-cols-3 gap-4">
+                        <div class="col-span-2">
+                            <label class="block text-[10px] uppercase tracking-widest text-gray-500 mb-1">Número do Cartão (16 dígitos)</label>
+                            <input type="text" id="giftNumero" class="w-full bg-[#111] border border-gray-800 rounded px-3 py-2 text-sm text-white outline-none" maxlength="16" placeholder="0000000000000000">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] uppercase tracking-widest text-gray-500 mb-1">Cód. Segurança</label>
+                            <input type="password" id="giftCvv" class="w-full bg-[#111] border border-gray-800 rounded px-3 py-2 text-sm text-white outline-none" maxlength="4" placeholder="0000">
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="bg-[#111] border border-gray-800 rounded-lg p-6">
+                <div class="flex justify-between items-center mb-2 text-sm text-gray-400">
+                    <span>Subtotal (<span id="qtdItens">0</span> itens)</span>
+                    <span id="resumoSubtotal">R$ 0,00</span>
+                </div>
+                <div class="flex justify-between items-center mb-4 text-sm text-gray-400 border-b border-gray-800 pb-4">
+                    <span>Frete</span>
+                    <span id="resumoFrete">R$ 0,00</span>
+                </div>
+                <div class="flex justify-between items-end mb-6">
+                    <span class="text-sm uppercase tracking-widest text-white">Total a Pagar</span>
+                    <span id="resumoTotal" class="text-3xl font-bold text-white">R$ 0,00</span>
+                </div>
+
+                <button id="btnPagar" class="w-full bg-white text-black font-bold uppercase tracking-widest py-4 rounded hover:bg-gray-200 transition-colors flex items-center justify-center gap-2">
+                    <span class="material-symbols-outlined">check_circle</span> Finalizar Pagamento
+                </button>
+            </section>
+        </div>
+
+        <div id="transactionState" class="hidden flex-col items-center justify-center py-10 bg-[#050505] border border-gray-900 rounded-lg p-6 text-center">
+            
+            <div id="boxPix" class="hidden flex-col items-center gap-4 w-full">
+                <h2 class="text-xl font-bold text-green-400">Quase lá! Escaneie o QR Code.</h2>
+                <p class="text-sm text-gray-400 mb-4">Você tem 15 minutos para pagar. A tela vai atualizar automaticamente.</p>
+                
+                <div class="bg-white p-2 rounded-lg">
+                    <img id="qrCodePix" src="" alt="QR Code PIX" class="w-48 h-48">
+                </div>
+                
+                <div class="w-full max-w-sm">
+                    <label class="block text-[10px] uppercase tracking-widest text-gray-500 mb-1 text-left">Código Copia e Cola</label>
+                    <div class="flex">
+                        <input type="text" id="copiaColaPix" readonly class="w-full bg-[#111] border border-gray-800 rounded-l px-3 py-2 text-xs text-gray-400 outline-none">
+                        <button onclick="copiarPix()" class="bg-gray-800 px-4 rounded-r hover:bg-gray-700 transition-colors">Copiar</button>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2 mt-4 text-xs text-yellow-500 animate-pulse">
+                    <span class="material-symbols-outlined text-[16px]">hourglass_empty</span> Aguardando pagamento...
+                </div>
+            </div>
+
+            <div id="boxBoleto" class="hidden flex-col items-center gap-4 w-full">
+                <h2 class="text-xl font-bold text-green-400">Boleto Gerado!</h2>
+                <p class="text-sm text-gray-400 mb-4">Seu pedido foi reservado. O pagamento pode levar até 2 dias úteis para compensar.</p>
+                
+                <a id="linkBoleto" href="#" target="_blank" class="bg-white text-black px-6 py-3 rounded font-bold uppercase tracking-widest hover:bg-gray-200 transition-colors">
+                    Imprimir / Ver Boleto
+                </a>
+                
+                <div class="mt-8 pt-8 border-t border-gray-900 w-full">
+                    <button onclick="concluirPedidoBoleto()" class="text-gray-400 hover:text-white underline text-sm">Voltar para a Loja</button>
+                </div>
+            </div>
+
+            <div id="boxSucesso" class="hidden flex-col items-center gap-4 w-full">
+                <span class="material-symbols-outlined text-6xl text-green-500 mb-2">task_alt</span>
+                <h2 class="text-2xl font-bold text-white">Pagamento Aprovado!</h2>
+                <p class="text-sm text-gray-400 mb-6">O seu pedido <b id="numeroPedidoSucesso" class="text-white"></b> foi confirmado e já enviamos para a separação no estoque.</p>
+                <a href="minhas-compras.html" class="w-full max-w-xs bg-white text-black px-6 py-3 rounded font-bold uppercase tracking-widest hover:bg-gray-200 transition-colors block text-center">Ver Meus Pedidos</a>
+            </div>
+
+        </div>
+
+    </main>
+
+    <script type="module" src="compra-logic.js"></script>
+</body>
+</html>

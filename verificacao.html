@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verificação de Segurança | Boutique Diniz</title>
+    
+    <link rel="icon" type="image/png" href="logo.png">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Satisfy&family=Montserrat:wght@200;300;400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,200,0,0" rel="stylesheet" />
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: { background: "#000000", surface: "#050505", primary: "#ffffff" },
+                    fontFamily: { logo: ["Satisfy", "cursive"], body: ["Montserrat", "sans-serif"] },
+                    animation: { 
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'spin-slow': 'spin 3s linear infinite'
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { background-color: #000; color: #fff; overflow: hidden; }
+        
+        /* Círculo de Scanner estilo Radar */
+        .scanner-ring {
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-top-color: rgba(255,255,255,0.8);
+            animation: spin 1.5s linear infinite;
+        }
+
+        .fade-out { opacity: 0; transition: opacity 0.5s ease; pointer-events: none; }
+        .fade-in { opacity: 1 !important; transition: opacity 0.5s ease; }
+    </style>
+</head>
+<body class="font-body bg-background text-primary min-h-screen flex flex-col items-center justify-center selection:bg-white selection:text-black">
+
+    <script>
+        document.addEventListener('contextmenu', event => event.preventDefault());
+        document.onkeydown = function(e) {
+            if(e.keyCode == 123) return false;
+            if(e.ctrlKey && e.shiftKey && (e.keyCode == 'I'.charCodeAt(0) || e.keyCode == 'C'.charCodeAt(0) || e.keyCode == 'J'.charCodeAt(0))) return false;
+            if(e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) return false;
+        }
+    </script>
+
+    <div class="absolute top-8 left-0 w-full text-center">
+        <h1 class="font-logo text-3xl opacity-50">Boutique Diniz</h1>
+    </div>
+
+    <div id="scanContainer" class="w-full max-w-sm p-8 text-center flex flex-col items-center justify-center">
+        
+        <div id="scannerAnim" class="relative w-32 h-32 mb-8 flex items-center justify-center">
+            <div class="scanner-ring"></div>
+            <div class="absolute inset-2 border border-white/5 rounded-full"></div>
+            <span id="scanIcon" class="material-symbols-outlined text-4xl text-white/80 animate-pulse-slow">shield</span>
+        </div>
+
+        <h2 id="scanTitle" class="text-2xl font-light mb-2 tracking-wide">Ambiente Seguro</h2>
+        <p id="scanDesc" class="text-xs text-gray-500 uppercase tracking-[0.2em] h-8">Iniciando protocolos...</p>
+
+        <div class="w-full h-[1px] bg-gray-900 mt-8 relative overflow-hidden">
+            <div id="scanProgress" class="absolute top-0 left-0 h-full bg-white w-0 transition-all duration-300"></div>
+        </div>
+
+    </div>
+
+    <div id="errorContainer" class="hidden opacity-0 flex-col items-center justify-center text-center p-8 max-w-md">
+        <span class="material-symbols-outlined text-6xl text-red-500 mb-6">gpp_bad</span>
+        <h2 class="text-3xl font-light text-white mb-4">Acesso Bloqueado</h2>
+        <p class="text-sm text-gray-400 font-light mb-8 leading-relaxed">
+            Detectamos anomalias ou falta de requisitos de segurança no seu dispositivo/navegador. Para proteger seus dados, a sessão foi encerrada.
+        </p>
+        <button onclick="window.location.href='login.html'" class="px-8 py-3 bg-transparent border border-gray-600 text-gray-300 text-xs font-bold uppercase tracking-widest hover:bg-white hover:text-black hover:border-white transition-all">
+            Retornar ao Início
+        </button>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            iniciarEscaneamento();
+        });
+
+        // Simula os passos para dar tempo do usuário ver (UX)
+        const passos = [
+            { progresso: 20, texto: "Analisando integridade da sessão..." },
+            { progresso: 50, texto: "Verificando anomalias no dispositivo..." },
+            { progresso: 80, texto: "Validando ambiente de execução..." },
+            { progresso: 100, texto: "Criptografia confirmada." }
+        ];
+
+        async function iniciarEscaneamento() {
+            const scanDesc = document.getElementById('scanDesc');
+            const scanProgress = document.getElementById('scanProgress');
+
+            // Executa a animação passo a passo
+            for (let i = 0; i < passos.length; i++) {
+                await delay(800); // Aguarda 800ms entre cada passo
+                scanDesc.innerText = passos[i].texto;
+                scanProgress.style.width = `${passos[i].progresso}%`;
+            }
+
+            // Após a animação, executa as checagens reais de segurança
+            await delay(500);
+            verificarSeguranca();
+        }
+
+        function verificarSeguranca() {
+            let isSeguro = true;
+
+            // --- CHECAGEM 1: Sessão Existe? ---
+            const sessao = localStorage.getItem('boutique_diniz_session');
+            if (!sessao) isSeguro = false;
+
+            // --- CHECAGEM 2: Prevenção contra Robôs (Puppeteer/Selenium) ---
+            // Se navigator.webdriver for true, é um robô rodando o navegador em background
+            if (navigator.webdriver) isSeguro = false;
+
+            // --- CHECAGEM 3: Verificação de Console/Ferramentas de Desenvolvedor Básica ---
+            // Muitos scripts maliciosos injetam variáveis estranhas.
+            // Aqui fazemos uma checagem básica do ambiente (Window size anômalo, etc)
+            if (window.outerWidth === 0 && window.outerHeight === 0) isSeguro = false;
+
+            // --- CHECAGEM 4: Outros bloqueios ---
+            // (Você pode adicionar mais regras aqui no futuro se precisar)
+
+            if (isSeguro) {
+                // SUCESSO
+                document.getElementById('scanTitle').innerText = "Verificação Concluída";
+                document.getElementById('scanDesc').innerText = "Redirecionando...";
+                document.getElementById('scanIcon').innerText = "check_circle";
+                document.getElementById('scanIcon').classList.replace('text-white/80', 'text-white');
+                document.getElementById('scanIcon').classList.remove('animate-pulse-slow');
+                document.querySelector('.scanner-ring').style.display = 'none'; // Para a roda
+                
+                // Vai para a página principal (Painel/Home)
+                setTimeout(() => {
+                    window.location.href = 'index.html'; // <<< MUDE AQUI PARA A SUA PÁGINA PRINCIPAL
+                }, 1000);
+
+            } else {
+                // FALHA: MATAR SESSÃO E BLOQUEAR
+                
+                // 1. Destrói o login
+                localStorage.removeItem('boutique_diniz_session');
+
+                // 2. Esconde o scanner e mostra a tela de erro
+                const scanContainer = document.getElementById('scanContainer');
+                const errorContainer = document.getElementById('errorContainer');
+
+                scanContainer.classList.add('fade-out');
+                
+                setTimeout(() => {
+                    scanContainer.style.display = 'none';
+                    errorContainer.classList.remove('hidden');
+                    // Pequeno delay para a classe de opacidade fazer efeito
+                    setTimeout(() => errorContainer.classList.add('fade-in'), 50);
+                }, 500);
+            }
+        }
+
+        // Função auxiliar de tempo
+        function delay(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+    </script>
+</body>
+</html>

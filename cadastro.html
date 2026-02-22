@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cadastro | Boutique Diniz</title>
+    
+    <link rel="icon" type="image/png" href="logo.png">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Satisfy&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet" />
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: { background: "#000000", surface: "#0a0a0a", primary: "#ffffff", error: "#ef4444" },
+                    fontFamily: { logo: ["Satisfy", "cursive"], body: ["Montserrat", "sans-serif"] },
+                    animation: { 'fade-in': 'fadeIn 0.5s ease-out forwards', 'slide-up': 'slideUp 0.5s ease-out forwards' },
+                    keyframes: {
+                        fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
+                        slideUp: { '0%': { opacity: '0', transform: 'translateY(20px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { background-color: #000; color: #fff; overflow-x: hidden; }
+        /* Remove o destaque azul padrão */
+        input, select, textarea, button { outline: none; -webkit-tap-highlight-color: transparent; }
+        
+        /* Estilização da Barra de Progresso */
+        .progress-bar { transition: width 0.5s ease; }
+        
+        /* Transição suave entre passos */
+        .step-content { display: none; opacity: 0; transition: opacity 0.4s ease; }
+        .step-content.active { display: block; opacity: 1; animation: slideUp 0.5s ease; }
+
+        /* Estilo do PDF Viewer */
+        iframe { border: none; width: 100%; height: 60vh; background: #fff; }
+    </style>
+</head>
+<body class="font-body bg-background text-primary min-h-screen flex flex-col items-center justify-center selection:bg-white selection:text-black">
+
+    <script>
+        document.addEventListener('contextmenu', event => event.preventDefault());
+        document.onkeydown = function(e) {
+            if(e.keyCode == 123) { return false; } // F12
+            if(e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)){ return false; } // Ctrl+Shift+I
+            if(e.ctrlKey && e.shiftKey && e.keyCode == 'C'.charCodeAt(0)){ return false; } // Ctrl+Shift+C
+            if(e.ctrlKey && e.shiftKey && e.keyCode == 'J'.charCodeAt(0)){ return false; } // Ctrl+Shift+J
+            if(e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)){ return false; } // Ctrl+U
+        }
+    </script>
+
+    <div class="fixed top-0 left-0 w-full h-1 bg-gray-900 z-50">
+        <div id="progressBar" class="h-full bg-white w-[10%] progress-bar"></div>
+    </div>
+
+    <div class="w-full max-w-lg p-8 relative z-10">
+        
+        <div class="text-center mb-10">
+            <h1 class="font-logo text-4xl mb-2">Boutique Diniz</h1>
+            <p class="text-[0.6rem] uppercase tracking-[0.4em] text-gray-500">Criação de Conta</p>
+        </div>
+
+        <form id="cadastroForm" class="relative min-h-[300px]">
+            
+            <div class="step-content active" data-step="1">
+                <h2 class="text-2xl font-light mb-2">Vamos começar.</h2>
+                <p class="text-gray-500 text-sm mb-8">Como você gostaria de ser chamada?</p>
+                <input type="text" id="nome_completo" class="w-full bg-transparent border-b border-gray-700 text-2xl py-2 focus:border-white transition-colors" placeholder="Seu nome completo" autofocus>
+            </div>
+
+            <div class="step-content" data-step="2">
+                <h2 class="text-2xl font-light mb-2">Prazer, <span id="displayNome" class="font-normal capitalize text-white"></span>.</h2>
+                <p class="text-gray-500 text-sm mb-8">Precisamos do seu CPF para validar seu cadastro.</p>
+                <input type="tel" id="cpf" maxlength="14" class="w-full bg-transparent border-b border-gray-700 text-2xl py-2 focus:border-white transition-colors tracking-widest" placeholder="000.000.000-00">
+            </div>
+
+            <div class="step-content" data-step="3">
+                <h2 class="text-2xl font-light mb-2">Canais de contato</h2>
+                <p class="text-gray-500 text-sm mb-6">Para enviarmos novidades e confirmações.</p>
+                
+                <div class="space-y-6">
+                    <div>
+                        <label class="text-[10px] uppercase tracking-widest text-gray-500">E-mail</label>
+                        <input type="email" id="email" class="w-full bg-transparent border-b border-gray-700 text-lg py-2 focus:border-white transition-colors" placeholder="voce@exemplo.com">
+                    </div>
+                    <div>
+                        <label class="text-[10px] uppercase tracking-widest text-gray-500">Celular / WhatsApp</label>
+                        <input type="tel" id="celular" maxlength="15" class="w-full bg-transparent border-b border-gray-700 text-lg py-2 focus:border-white transition-colors" placeholder="(00) 00000-0000">
+                    </div>
+                </div>
+            </div>
+
+            <div class="step-content" data-step="4">
+                <h2 class="text-2xl font-light mb-2">Perfil</h2>
+                <p class="text-gray-500 text-sm mb-8">Isso nos ajuda a personalizar sua experiência.</p>
+                
+                <div class="flex gap-4">
+                    <button type="button" class="flex-1 p-6 border border-gray-800 rounded hover:bg-white hover:text-black transition-all group btn-sexo" data-value="F">
+                        <span class="material-symbols-outlined text-3xl mb-2 group-hover:scale-110 transition-transform">woman</span>
+                        <div class="text-xs uppercase tracking-widest">Feminino</div>
+                    </button>
+                    <button type="button" class="flex-1 p-6 border border-gray-800 rounded hover:bg-white hover:text-black transition-all group btn-sexo" data-value="M">
+                        <span class="material-symbols-outlined text-3xl mb-2 group-hover:scale-110 transition-transform">man</span>
+                        <div class="text-xs uppercase tracking-widest">Masculino</div>
+                    </button>
+                </div>
+                <input type="hidden" id="sexo" value="">
+            </div>
+
+            <div class="step-content" data-step="5">
+                <h2 class="text-2xl font-light mb-2">Segurança</h2>
+                <p class="text-gray-500 text-sm mb-6">Crie uma senha forte (min. 6 caracteres, maiúscula, minúscula e número).</p>
+                
+                <div class="space-y-6">
+                    <div class="relative">
+                        <input type="password" id="senha" class="w-full bg-transparent border-b border-gray-700 text-xl py-2 focus:border-white transition-colors" placeholder="Senha">
+                    </div>
+                    <div class="relative">
+                        <input type="password" id="confirmarSenha" class="w-full bg-transparent border-b border-gray-700 text-xl py-2 focus:border-white transition-colors" placeholder="Confirmar Senha">
+                    </div>
+                </div>
+                <ul class="mt-4 text-[10px] text-gray-500 space-y-1">
+                    <li id="rule-length" class="flex items-center gap-2"><span class="material-symbols-outlined text-[10px]">circle</span> Mínimo 6 caracteres</li>
+                    <li id="rule-upper" class="flex items-center gap-2"><span class="material-symbols-outlined text-[10px]">circle</span> Letra Maiúscula</li>
+                    <li id="rule-lower" class="flex items-center gap-2"><span class="material-symbols-outlined text-[10px]">circle</span> Letra Minúscula</li>
+                    <li id="rule-number" class="flex items-center gap-2"><span class="material-symbols-outlined text-[10px]">circle</span> Número</li>
+                </ul>
+            </div>
+
+            <div class="step-content" data-step="6">
+                <h2 class="text-2xl font-light mb-2">Confirmação</h2>
+                <p class="text-gray-500 text-sm mb-6">Verifique seus dados antes de concluir.</p>
+                
+                <div class="bg-[#0a0a0a] p-6 rounded border border-gray-800 text-sm space-y-3 mb-6">
+                    <div class="flex justify-between border-b border-gray-900 pb-2">
+                        <span class="text-gray-500">Nome</span>
+                        <span class="text-white text-right" id="resumoNome"></span>
+                    </div>
+                    <div class="flex justify-between border-b border-gray-900 pb-2">
+                        <span class="text-gray-500">CPF</span>
+                        <span class="text-white text-right" id="resumoCPF"></span>
+                    </div>
+                    <div class="flex justify-between border-b border-gray-900 pb-2">
+                        <span class="text-gray-500">Email</span>
+                        <span class="text-white text-right truncate max-w-[150px]" id="resumoEmail"></span>
+                    </div>
+                </div>
+
+                <div class="flex items-start gap-3">
+                    <input type="checkbox" id="aceiteTermos" class="mt-1 w-4 h-4 bg-transparent border border-gray-600 rounded cursor-pointer">
+                    <label for="aceiteTermos" class="text-xs text-gray-400 cursor-pointer select-none">
+                        Li e concordo com os <a href="#" id="btnOpenTerms" class="text-white underline decoration-gray-600 underline-offset-2">Termos de Uso e Política de Privacidade</a> da Boutique Diniz.
+                    </label>
+                </div>
+            </div>
+
+            <div class="step-content text-center pt-10" data-step="7">
+                <div class="inline-flex items-center justify-center w-20 h-20 rounded-full border-2 border-white mb-6 animate-bounce">
+                    <span class="material-symbols-outlined text-4xl">check</span>
+                </div>
+                <h2 class="text-3xl font-logo mb-2">Bem-vinda!</h2>
+                <p class="text-gray-400 text-sm mb-6">Sua conta foi criada com sucesso.</p>
+                <p class="text-xs text-gray-600">Redirecionando para o login...</p>
+            </div>
+
+            <div id="errorMessage" class="hidden mt-4 text-center text-xs text-red-400 bg-red-900/10 p-2 rounded border border-red-900/30"></div>
+
+            <div class="flex justify-between mt-10" id="navButtons">
+                <button type="button" id="btnPrev" class="text-xs uppercase tracking-widest text-gray-500 hover:text-white px-4 py-2 hidden">Voltar</button>
+                <button type="button" id="btnNext" class="bg-white text-black px-8 py-3 rounded-sm text-xs font-bold uppercase tracking-[0.2em] hover:bg-gray-200 transition-colors shadow-[0_0_15px_rgba(255,255,255,0.1)]">
+                    Continuar
+                </button>
+            </div>
+        </form>
+
+        <div class="mt-8 text-center text-xs text-gray-600" id="loginLink">
+            Já tem uma conta? <a href="login.botique.diniz.html" class="text-gray-400 hover:text-white underline">Entrar</a>
+        </div>
+    </div>
+
+    <div id="termsModal" class="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-white text-black w-full max-w-2xl rounded shadow-2xl overflow-hidden animate-slide-up">
+            <div class="p-4 border-b flex justify-between items-center">
+                <h3 class="font-logo text-2xl">Termos & Condições</h3>
+                <button id="btnCloseTerms" class="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <div class="relative bg-gray-100">
+                <iframe src="termodiniz.pdf#toolbar=0" title="Termos de Uso">
+                    <p class="p-10 text-center">Seu navegador não suporta PDF. <a href="termodiniz.pdf">Baixe aqui</a>.</p>
+                </iframe>
+            </div>
+            <div class="p-4 bg-gray-50 border-t flex justify-end">
+                <button id="btnAgreeTerms" class="bg-black text-white px-6 py-2 text-xs font-bold uppercase tracking-widest hover:bg-gray-800">
+                    Li e Concordo
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="cadastro-logic.js"></script>
+</body>
+</html>
