@@ -1,8 +1,8 @@
 import { getAuthHeaders, API_CONFIG } from './chavetoken.js';
 
-// --- CONFIGURAÇÃO DO GATEWAY ASAAS ---
+// --- CONFIGURAÇÃO DO GATEWAY ASAAS E CHAVE DE ADMINISTRAÇÃO ---
 const ASAAS_API_BASE = "https://round-union-6fef.vitortullijoao.workers.dev";
-const ASAAS_SECURITY_KEY = "1526105"; [span_6](start_span)// Chave de segurança exigida pelo Worker[span_6](end_span)
+const ASAAS_SECURITY_KEY = "1526105"; [span_1](start_span)// Chave EXATA conforme Documentação API[span_1](end_span)
 
 // --- ELEMENTOS DOM ---
 const loadingState = document.getElementById('loadingState');
@@ -27,18 +27,27 @@ let totalGeral = 0;
 let pollingInterval = null;
 
 // ==========================================
-// 1. INICIALIZAÇÃO
+// 1. INICIALIZAÇÃO IMEDIATA (Sem travas de carregamento)
 // ==========================================
-document.addEventListener('DOMContentLoaded', async () => {
+iniciarCheckout();
+
+async function iniciarCheckout() {
+    // A. Retorno do App do Banco (Evita que o PIX se perca)
     const transacaoPendente = localStorage.getItem('boutique_pending_tx');
     if (transacaoPendente) {
         const txData = JSON.parse(transacaoPendente);
-        cliente = JSON.parse(atob(localStorage.getItem('boutique_diniz_session'))).usuario;
-        dadosCarrinho = JSON.parse(localStorage.getItem('boutique_dados_checkout'));
+        
+        const sessaoStr = localStorage.getItem('boutique_diniz_session');
+        if(sessaoStr) cliente = JSON.parse(atob(sessaoStr)).usuario;
+        
+        const carrinhoStr = localStorage.getItem('boutique_dados_checkout');
+        if(carrinhoStr) dadosCarrinho = JSON.parse(carrinhoStr);
+        
         recuperarTransacaoPendente(txData);
         return;
     }
 
+    // B. Fluxo Normal de Compra
     const sessaoStr = localStorage.getItem('boutique_diniz_session');
     const carrinhoStr = localStorage.getItem('boutique_dados_checkout');
 
@@ -55,9 +64,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderizarItensDoPedido();
         await buscarEnderecoEcalcularFrete();
     } catch (e) {
+        console.error("Erro na inicialização:", e);
         window.location.href = 'carrinho.html';
     }
-});
+}
 
 // ==========================================
 // 2. RENDERIZAR OS ITENS (Visualização)
@@ -113,6 +123,8 @@ async function buscarEnderecoEcalcularFrete() {
     try {
         const headers = await getAuthHeaders();
         const res = await fetch(`${API_CONFIG.baseUrl}/api/clientes/${cliente.id}/enderecos`, { headers });
+        
+        if (!res.ok) throw new Error("Erro na API");
         const dados = await res.json();
         
         let enderecos = [];
@@ -123,6 +135,10 @@ async function buscarEnderecoEcalcularFrete() {
 
         if (enderecoAtivo) {
             txtEnderecoDestino.innerText = `${enderecoAtivo.rua}, ${enderecoAtivo.numero} - ${enderecoAtivo.cidade}/${enderecoAtivo.estado}`;
+        } else {
+            alert("Erro: Morada não localizada. Por favor, volte ao carrinho.");
+            window.location.href = 'carrinho.html';
+            return;
         }
 
         window.calcularFrete(); 
@@ -132,7 +148,8 @@ async function buscarEnderecoEcalcularFrete() {
         checkoutForm.classList.add('flex');
 
     } catch (error) {
-        alert("Falha ao comunicar com a base de endereços.");
+        alert("Falha ao comunicar com a base de moradas.");
+        window.location.href = 'carrinho.html';
     }
 }
 
@@ -184,15 +201,14 @@ window.alternarFormularioPagamento = function() {
 btnPagar.addEventListener('click', async () => {
     const metodo = document.querySelector('input[name="metodo_pagamento"]:checked').value;
     
-    btnPagar.innerHTML = `<span class="material-symbols-outlined animate-spin">sync</span> Processando Pagamento...`;
+    btnPagar.innerHTML = `<span class="material-symbols-outlined animate-spin">sync</span> Validando com o Banco...`;
     btnPagar.disabled = true;
 
     try {
         let resultadoPagamento = null;
 
-        [span_7](start_span)[span_8](start_span)// Construção do Payload Base com Nomenclatura EXATA do Asaas (name, amount, cpf, email)[span_7](end_span)[span_8](end_span)
         const payloadBaseAsaas = {
-            amount: parseFloat(totalGeral.toFixed(2)),
+            [span_2](start_span)amount: parseFloat(totalGeral.toFixed(2)), // Envio obrigatório como 'amount'[span_2](end_span)
             name: cliente.nome_completo || cliente.nome || "Cliente Boutique Diniz",
             cpf: cliente.cpf,
             email: cliente.email || 'cliente@boutiquediniz.com',
@@ -225,12 +241,12 @@ btnPagar.addEventListener('click', async () => {
     }
 });
 
-// --- COMUNICAÇÕES COM WORKER DO ASAAS (Com a chave de segurança obrigatória) ---
+// --- COMUNICAÇÕES COM WORKER DO ASAAS (Com a chave de segurança 1526105) ---
 
 function getAsaasHeaders() {
     return {
         'Content-Type': 'application/json',
-        [span_9](start_span)'X-Security-Key': ASAAS_SECURITY_KEY // Header oficial documentado pelo gateway[span_9](end_span)
+        [span_3](start_span)'X-Security-Key': ASAAS_SECURITY_KEY // A injeção da chave exata exigida[span_3](end_span)
     };
 }
 
@@ -239,7 +255,7 @@ async function processarAsaasPix(payloadBase) {
         method: 'POST', headers: getAsaasHeaders(), body: JSON.stringify(payloadBase)
     });
     const data = await res.json();
-    if(!res.ok) throw new Error(data.error || "Erro Asaas HTTP 500");
+    if(!res.ok) throw new Error(data.error || "Servidor do Banco Indisponível (500)");
     return data;
 }
 
@@ -253,7 +269,7 @@ async function processarAsaasBoleto(payloadBase) {
 }
 
 async function processarAsaasCartaoCredito(payloadBase) {
-    const numero = document.getElementById('ccNumero').value.replace(/\D/g, ''); // Limpa espaços do número
+    const numero = document.getElementById('ccNumero').value.replace(/\D/g, ''); 
     const nome = document.getElementById('ccNome').value;
     const validade = document.getElementById('ccValidade').value;
     const cvv = document.getElementById('ccCvv').value;
@@ -261,16 +277,14 @@ async function processarAsaasCartaoCredito(payloadBase) {
 
     if(!numero || !nome || !validade || !cvv) throw new Error("Preencha todos os dados do cartão.");
 
-    // Tratamento Inteligente da Validade (MM/AA para MM e AAAA)
     const partesValidade = validade.split('/');
     if(partesValidade.length !== 2) throw new Error("Validade inválida. Use MM/AA");
     const expiryMonth = partesValidade[0];
     const expiryYear = partesValidade[1].length === 2 ? `20${partesValidade[1]}` : partesValidade[1];
 
-    [span_10](start_span)// Payload Específico de Cartão do Asaas[span_10](end_span)
     const payloadCartao = {
         ...payloadBase,
-        postalCode: enderecoAtivo.cep.replace(/\D/g, ''),
+        [span_4](start_span)postalCode: enderecoAtivo.cep.replace(/\D/g, ''), // Formato exigido para cartão[span_4](end_span)
         addressNumber: enderecoAtivo.numero,
         installments: parseInt(parcelas),
         card: {
@@ -315,7 +329,8 @@ function salvarTransacaoPendente(dados) {
 }
 
 function recuperarTransacaoPendente(tx) {
-    checkoutForm.classList.add('hidden');
+    if(checkoutForm) checkoutForm.classList.add('hidden');
+    
     transactionState.classList.remove('hidden');
     transactionState.classList.add('flex');
     loadingState.classList.add('hidden');
@@ -346,7 +361,6 @@ window.copiarPix = function() {
 function iniciarMonitoramentoPix(paymentId) {
     if (pollingInterval) clearInterval(pollingInterval);
     
-    [span_11](start_span)// Rota de status precisa de autenticação via X-Security-Key[span_11](end_span)
     pollingInterval = setInterval(async () => {
         try {
             const res = await fetch(`${ASAAS_API_BASE}/payment/status/${paymentId}`, { headers: getAsaasHeaders() });
@@ -400,6 +414,7 @@ async function finalizarPedidoNoBackEnd(statusPagamento, idExternoGateway) {
                 localStorage.setItem('boutique_last_order_id', dataPedido.data.id);
             }
 
+            [span_5](start_span)// O Carrinho é esvaziado permanentemente[span_5](end_span)
             await fetch(`${API_CONFIG.baseUrl}/api/carrinho/${cliente.id}/limpar`, { 
                 method: 'POST', 
                 headers: headersJson 
@@ -408,7 +423,7 @@ async function finalizarPedidoNoBackEnd(statusPagamento, idExternoGateway) {
             localStorage.setItem('boutique_cart_qty', '0'); 
         }
     } catch (e) {
-        console.error("Falha ao salvar pedido no servidor:", e);
+        console.error("Aviso: Pedido salvo no Asaas, falha na API principal.", e);
     }
 }
 
@@ -432,7 +447,8 @@ function mostrarTelaSucesso() {
     
     document.getElementById('boxPix').classList.add('hidden');
     document.getElementById('boxBoleto').classList.add('hidden');
-    checkoutForm.classList.add('hidden');
+    
+    if(checkoutForm) checkoutForm.classList.add('hidden');
 
     transactionState.classList.remove('hidden');
     transactionState.classList.add('flex');
