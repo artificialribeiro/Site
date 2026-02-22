@@ -1,51 +1,57 @@
 import { getAuthHeaders, API_CONFIG } from './chavetoken.js';
 
-// --- CONFIGURAÇÃO DO GATEWAY ASAAS ---
-const ASAAS_API_BASE = "https://round-union-6fef.vitortullijoao.workers.dev";
-const ASAAS_SECURITY_KEY = "1526105"; // Chave EXATA documentada
+// ==========================================
+// CONFIGURAÇÃO DO GATEWAY ASAAS
+// ==========================================
+const ASAAS_API_BASE    = "https://round-union-6fef.vitortullijoao.workers.dev";
+const ASAAS_SECURITY_KEY = "1526105";
 
-// --- ELEMENTOS DOM ---
-const loadingState = document.getElementById('loadingState');
-const checkoutForm = document.getElementById('checkoutForm');
-const transactionState = document.getElementById('transactionState');
-const listaItensCompra = document.getElementById('listaItensCompra');
-
+// ==========================================
+// ELEMENTOS DOM
+// ==========================================
+const loadingState      = document.getElementById('loadingState');
+const checkoutForm      = document.getElementById('checkoutForm');
+const transactionState  = document.getElementById('transactionState');
+const listaItensCompra  = document.getElementById('listaItensCompra');
 const txtEnderecoDestino = document.getElementById('txtEnderecoDestino');
-const valorFreteUI = document.getElementById('valorFreteUI');
-const resumoSubtotal = document.getElementById('resumoSubtotal');
-const resumoFrete = document.getElementById('resumoFrete');
-const resumoTotal = document.getElementById('resumoTotal');
-const qtdItens = document.getElementById('qtdItens');
-const btnPagar = document.getElementById('btnPagar');
+const valorFreteUI      = document.getElementById('valorFreteUI');
+const resumoSubtotal    = document.getElementById('resumoSubtotal');
+const resumoFrete       = document.getElementById('resumoFrete');
+const resumoTotal       = document.getElementById('resumoTotal');
+const qtdItens          = document.getElementById('qtdItens');
+const btnPagar          = document.getElementById('btnPagar');
 const cpfCompradorInput = document.getElementById('cpfComprador');
 
-let cliente = null;
-let enderecoAtivo = null;
-let dadosCarrinho = null;
-let valorFrete = 0;
-let valorDesconto = 0;
-let codigoCupomAtivo = null;
-let totalGeral = 0;
-let pollingInterval = null;
+// ==========================================
+// ESTADO GLOBAL
+// ==========================================
+let cliente            = null;
+let enderecoAtivo      = null;
+let todosEnderecos     = [];
+let dadosCarrinho      = null;
+let valorFrete         = 0;
+let valorDesconto      = 0;
+let codigoCupomAtivo   = null;
+let totalGeral         = 0;
+let pollingInterval    = null;
 
 // ==========================================
-// 1. INICIALIZAÇÃO INFALÍVEL
+// 1. BOOT
 // ==========================================
-function bootApp() {
+(function bootApp() {
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', iniciarCheckout);
     } else {
         iniciarCheckout();
     }
-}
-bootApp();
+})();
 
-function mostrarErroFatal(mensagem) {
+function mostrarErroFatal(msg) {
     if (loadingState) {
         loadingState.innerHTML = `
             <span class="material-symbols-outlined text-5xl text-red-500 mb-2">error</span>
-            <h3 class="text-xl font-bold text-white text-center">Ops, falha na verificação!</h3>
-            <p class="text-sm text-gray-400 text-center max-w-sm mt-2">${mensagem}</p>
+            <h3 class="text-xl font-bold text-white text-center">Ops, algo falhou</h3>
+            <p class="text-sm text-gray-400 text-center max-w-sm mt-2">${msg}</p>
             <button onclick="window.location.href='carrinho.html'" class="mt-6 bg-white text-black font-bold uppercase tracking-widest text-xs px-8 py-3 rounded hover:bg-gray-200 transition-colors">Voltar ao Carrinho</button>
         `;
     }
@@ -53,174 +59,190 @@ function mostrarErroFatal(mensagem) {
 
 async function iniciarCheckout() {
     try {
-        // A. Verifica se existe uma transação pendente (ex: PIX a aguardar)
-        const transacaoPendente = localStorage.getItem('boutique_pending_tx');
-        if (transacaoPendente) {
-            const txData = JSON.parse(transacaoPendente);
+        // Recupera transação pendente (ex: PIX em aberto)
+        const txPendente = localStorage.getItem('boutique_pending_tx');
+        if (txPendente) {
+            const txData = JSON.parse(txPendente);
             const sessaoStr = localStorage.getItem('boutique_diniz_session');
-            if(sessaoStr) cliente = JSON.parse(atob(sessaoStr)).usuario;
+            if (sessaoStr) cliente = JSON.parse(atob(sessaoStr)).usuario;
             recuperarTransacaoPendente(txData);
             return;
         }
 
-        // B. Fluxo Normal de Checkout
-        const sessaoStr = localStorage.getItem('boutique_diniz_session');
+        const sessaoStr   = localStorage.getItem('boutique_diniz_session');
         const carrinhoStr = localStorage.getItem('boutique_dados_checkout');
-
         if (!sessaoStr || !carrinhoStr) {
-            mostrarErroFatal("Não conseguimos ler os dados do seu carrinho. Pode ter expirado.");
+            mostrarErroFatal("Dados do carrinho expirados. Por favor, volte ao carrinho.");
             return;
         }
 
-        const sessao = JSON.parse(atob(sessaoStr));
+        const sessao  = JSON.parse(atob(sessaoStr));
         dadosCarrinho = JSON.parse(carrinhoStr);
-        cliente = sessao.usuario;
-        
-        // Preenche o campo de CPF no HTML com o CPF da sessão
-        if(cpfCompradorInput && cliente.cpf) {
-            cpfCompradorInput.value = cliente.cpf;
+        cliente       = sessao.usuario || sessao.cliente || sessao;
+
+        if (cpfCompradorInput && cliente.cpf) {
+            cpfCompradorInput.value = mascararCpf(cliente.cpf.replace(/\D/g, ''));
         }
-        
+
         renderizarItensDoPedido();
-        await buscarEnderecoEcalcularFrete();
+        await buscarEnderecosEInicializar();
 
     } catch (e) {
         console.error(e);
-        mostrarErroFatal("Erro interno de comunicação. Verifique a sua conexão.");
+        mostrarErroFatal("Erro interno. Verifique a sua conexão e tente novamente.");
     }
 }
 
-// Máscara de CPF ao digitar
-if(cpfCompradorInput) {
-    cpfCompradorInput.addEventListener('input', function (e) {
-        let v = e.target.value.replace(/\D/g,"");
-        v = v.replace(/(\d{3})(\d)/,"$1.$2");
-        v = v.replace(/(\d{3})(\d)/,"$1.$2");
-        v = v.replace(/(\d{3})(\d{1,2})$/,"$1-$2");
-        e.target.value = v;
+// Máscaras
+function mascararCpf(v) {
+    v = v.replace(/\D/g, '').substring(0, 11);
+    v = v.replace(/(\d{3})(\d)/, '$1.$2');
+    v = v.replace(/(\d{3})(\d)/, '$1.$2');
+    v = v.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+    return v;
+}
+if (cpfCompradorInput) {
+    cpfCompradorInput.addEventListener('input', function(e) {
+        e.target.value = mascararCpf(e.target.value);
     });
 }
 
+// Máscara número cartão
+document.getElementById('ccNumero')?.addEventListener('input', function(e) {
+    let v = e.target.value.replace(/\D/g, '').substring(0, 16);
+    v = v.replace(/(\d{4})/g, '$1 ').trim();
+    e.target.value = v;
+});
+
+// Máscara validade
+document.getElementById('ccValidade')?.addEventListener('input', function(e) {
+    let v = e.target.value.replace(/\D/g, '').substring(0, 4);
+    if (v.length > 2) v = v.substring(0, 2) + '/' + v.substring(2);
+    e.target.value = v;
+});
+
+// Máscara CEP
+document.getElementById('novoEndCep')?.addEventListener('input', function(e) {
+    let v = e.target.value.replace(/\D/g, '').substring(0, 8);
+    if (v.length > 5) v = v.substring(0, 5) + '-' + v.substring(5);
+    e.target.value = v;
+});
+
 // ==========================================
-// 2. RENDERIZAÇÃO DA VITRINE DE PRODUTOS
+// 2. RENDERIZAÇÃO DOS ITENS
 // ==========================================
 function resolverImagem(caminho) {
-    if (!caminho) return 'https://via.placeholder.com/100/111/fff?text=Sem+Foto';
+    if (!caminho) return null;
     if (caminho.startsWith('data:image') || caminho.startsWith('http')) return caminho;
     if (caminho.length > 200) return `data:image/jpeg;base64,${caminho}`;
     return `${API_CONFIG.baseUrl}${caminho.startsWith('/') ? '' : '/'}${caminho}`;
 }
 
 function renderizarItensDoPedido() {
-    if (!dadosCarrinho || !dadosCarrinho.itens || dadosCarrinho.itens.length === 0) {
-        mostrarErroFatal("O seu carrinho parece estar vazio.");
+    if (!dadosCarrinho?.itens?.length) {
+        mostrarErroFatal("O seu carrinho está vazio.");
         return;
     }
 
-    let htmlItens = '';
+    let html = '';
     dadosCarrinho.itens.forEach(item => {
-        const qtd = item.quantidade || 1;
+        const qtd      = item.quantidade || 1;
         const variante = item.produto_variante || item.variante || item || {};
-        const produto = variante.produto || item.produto || item || {};
-        
-        const nome = produto.nome || item.produto_nome || "Peça Exclusiva";
-        const tamanho = variante.tamanho || item.tamanho || "N/D";
-        const cor = variante.cor || item.cor || "N/D";
-        const preco = parseFloat(produto.preco || item.preco || 0);
-        
-        let imgFinal = (produto.imagens && produto.imagens.length > 0) 
-            ? (produto.imagens[0].base64 || produto.imagens[0].caminho) 
-            : item.imagem;
+        const produto  = variante.produto || item.produto || item || {};
 
-        htmlItens += `
-            <div class="flex items-center gap-4 bg-[#0a0a0a] border border-gray-800 p-2 rounded">
-                <div class="w-12 h-16 bg-[#111] rounded overflow-hidden flex-shrink-0">
-                    <img src="${resolverImagem(imgFinal)}" class="w-full h-full object-cover">
+        const nome     = produto.nome || item.produto_nome || "Peça Exclusiva";
+        const tamanho  = variante.tamanho || item.tamanho || "—";
+        const cor      = variante.cor      || item.cor      || "—";
+        const preco    = parseFloat(item.preco_final || item.total_item || produto.preco || item.preco || 0);
+
+        let imgRaw = (produto.imagens?.length > 0)
+            ? (produto.imagens[0].imagem_base64 || produto.imagens[0].base64 || produto.imagens[0].caminho)
+            : item.imagem;
+        const imgSrc = resolverImagem(imgRaw);
+
+        html += `
+            <div class="flex items-center gap-4 bg-[#0a0a0a] border border-gray-800 p-3 rounded-lg">
+                <div class="w-12 h-16 bg-[#111] rounded-lg overflow-hidden flex-shrink-0 flex items-center justify-center">
+                    ${imgSrc
+                        ? `<img src="${imgSrc}" class="w-full h-full object-cover" onerror="this.parentElement.innerHTML='<span class=\\'material-symbols-outlined text-gray-700 text-2xl\\'>checkroom</span>'">`
+                        : `<span class="material-symbols-outlined text-gray-700 text-2xl">checkroom</span>`
+                    }
                 </div>
                 <div class="flex-1 min-w-0">
-                    <h4 class="text-sm font-medium text-white truncate">${nome}</h4>
-                    <p class="text-[10px] text-gray-500 uppercase tracking-widest mt-0.5">Tam: ${tamanho} | Cor: ${cor}</p>
+                    <h4 class="text-sm font-semibold text-white truncate">${nome}</h4>
+                    <p class="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">Tam: ${tamanho} · Cor: ${cor}</p>
+                    <p class="text-[10px] text-gray-500 mt-0.5">Qtd: ${qtd}</p>
                 </div>
-                <div class="text-right pr-2">
-                    <p class="text-xs text-gray-400">${qtd}x</p>
+                <div class="text-right pr-1">
                     <p class="text-sm font-bold text-green-400">R$ ${preco.toFixed(2).replace('.', ',')}</p>
                 </div>
-            </div>
-        `;
+            </div>`;
     });
-    if(listaItensCompra) listaItensCompra.innerHTML = htmlItens;
+
+    if (listaItensCompra) listaItensCompra.innerHTML = html;
 }
 
 // ==========================================
-// 3. API DE CUPÃO E CÁLCULOS
+// 3. CUPOM
 // ==========================================
 window.aplicarCupom = async function() {
-    const inputCupom = document.getElementById('inputCupom');
-    const codigo = inputCupom.value.trim().toUpperCase();
+    const input  = document.getElementById('inputCupom');
+    const btn    = document.getElementById('btnAplicarCupom');
+    const codigo = input.value.trim().toUpperCase();
     if (!codigo) return;
 
-    const btn = document.getElementById('btnAplicarCupom');
-    btn.innerText = "...";
-    btn.disabled = true;
+    btn.textContent = "...";
+    btn.disabled    = true;
 
     try {
         const headers = await getAuthHeaders();
         const res = await fetch(`${API_CONFIG.baseUrl}/api/cupons/validar`, {
             method: 'POST',
             headers: { ...headers, 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                codigo: codigo,
-                valor_carrinho: dadosCarrinho.subtotal
-            })
+            body: JSON.stringify({ codigo, valor_carrinho: dadosCarrinho.subtotal || dadosCarrinho.resumo?.subtotal })
         });
-        
         const data = await res.json();
-        
+
         if (res.ok && data.success && data.data.valido) {
             codigoCupomAtivo = codigo;
-            valorDesconto = parseFloat(data.data.desconto);
-            alert(`Cupão Aplicado! Desconto de R$ ${valorDesconto.toFixed(2).replace('.', ',')}`);
-            inputCupom.disabled = true;
-            btn.innerText = "ATIVO";
-            btn.classList.replace('bg-gray-800', 'bg-green-700');
+            valorDesconto    = parseFloat(data.data.desconto || 0);
+            input.disabled   = true;
+            btn.textContent  = "✓ ATIVO";
+            btn.classList.replace('bg-gray-800', 'bg-green-800');
             atualizarResumoValores();
         } else {
-            alert(data.message || "Cupão expirado ou esgotado.");
-            btn.innerText = "APLICAR";
-            btn.disabled = false;
+            alert(data.message || "Cupom expirado ou inválido.");
+            btn.textContent = "Aplicar";
+            btn.disabled    = false;
         }
     } catch (e) {
-        btn.innerText = "APLICAR";
-        btn.disabled = false;
+        btn.textContent = "Aplicar";
+        btn.disabled    = false;
     }
-}
+};
 
 // ==========================================
-// 4. BUSCA DE ENDEREÇO E FRETE
+// 4. ENDEREÇOS E FRETE
 // ==========================================
-async function buscarEnderecoEcalcularFrete() {
+async function buscarEnderecosEInicializar() {
     const headers = await getAuthHeaders();
     const res = await fetch(`${API_CONFIG.baseUrl}/api/clientes/${cliente.id}/enderecos`, { headers });
-    
-    if (!res.ok) throw new Error("Erro na API de endereços.");
+    if (!res.ok) throw new Error("Falha ao carregar endereços.");
 
     const dados = await res.json();
-    let enderecos = [];
-    if (Array.isArray(dados)) enderecos = dados;
-    else if (dados.data) enderecos = Array.isArray(dados.data) ? dados.data : [dados.data];
+    todosEnderecos = Array.isArray(dados) ? dados
+        : Array.isArray(dados.data) ? dados.data
+        : dados.data ? [dados.data] : [];
 
-    enderecoAtivo = enderecos.find(e => e.principal) || enderecos[0];
+    enderecoAtivo = todosEnderecos.find(e => e.principal === 1 || e.principal === true) || todosEnderecos[0];
 
     if (!enderecoAtivo) {
-        mostrarErroFatal("Você precisa de guardar a sua morada no carrinho antes de pagar.");
+        mostrarErroFatal("Nenhum endereço encontrado. Por favor, adicione um endereço no perfil antes de finalizar a compra.");
         return;
     }
 
-    if (txtEnderecoDestino) {
-        txtEnderecoDestino.innerText = `${enderecoAtivo.rua}, ${enderecoAtivo.numero} - ${enderecoAtivo.cidade}/${enderecoAtivo.estado}`;
-    }
-    
-    window.calcularFrete(); 
+    atualizarExibicaoEndereco();
+    window.calcularFrete();
 
     if (loadingState) loadingState.classList.add('hidden');
     if (checkoutForm) {
@@ -229,340 +251,503 @@ async function buscarEnderecoEcalcularFrete() {
     }
 }
 
+function atualizarExibicaoEndereco() {
+    if (!enderecoAtivo || !txtEnderecoDestino) return;
+    const compl = enderecoAtivo.complemento ? `, ${enderecoAtivo.complemento}` : '';
+    txtEnderecoDestino.textContent = `${enderecoAtivo.rua}, ${enderecoAtivo.numero}${compl} — ${enderecoAtivo.cidade}/${enderecoAtivo.estado}`;
+}
+
 window.calcularFrete = function() {
-    const tipo = document.querySelector('input[name="tipo_entrega"]:checked').value;
-    
+    const tipo = document.querySelector('input[name="tipo_entrega"]:checked')?.value || 'correios';
+    const avisoMotoboy = document.getElementById('avisoMotoboy');
+    const labelFrete   = document.getElementById('labelFrete');
+
     if (tipo === 'retirada') {
         valorFrete = 0;
-        if(valorFreteUI) valorFreteUI.innerText = "Grátis";
+        if (valorFreteUI) valorFreteUI.textContent = "Grátis";
+        if (labelFrete)   labelFrete.textContent   = "Retirada na Loja";
+        if (avisoMotoboy) avisoMotoboy.classList.add('hidden');
     } else {
-        // Regra de Frete (Cachoeiro Fixo ou Sedex)
-        if (enderecoAtivo.cidade.toLowerCase().includes('cachoeiro de itapemirim')) {
+        if (labelFrete) labelFrete.textContent = "Valor do Frete (Sedex)";
+        const cidade = (enderecoAtivo?.cidade || '').toLowerCase();
+        const estado = enderecoAtivo?.estado || '';
+
+        if (cidade.includes('cachoeiro')) {
             valorFrete = 35.00;
+            if (valorFreteUI) valorFreteUI.textContent = `R$ 35,00 (Motoboy)`;
+            if (avisoMotoboy) avisoMotoboy.classList.remove('hidden');
         } else {
-            const fretesBase = { 'ES': 25, 'RJ': 30, 'SP': 35, 'MG': 40 };
-            valorFrete = fretesBase[enderecoAtivo.estado] || 65.00;
+            if (avisoMotoboy) avisoMotoboy.classList.add('hidden');
+            const fretesPorEstado = { ES: 25, RJ: 30, SP: 35, MG: 40, PR: 45, SC: 45, RS: 50, BA: 55, DF: 55 };
+            valorFrete = fretesPorEstado[estado] || 65.00;
+            if (valorFreteUI) valorFreteUI.textContent = `R$ ${valorFrete.toFixed(2).replace('.', ',')} (Sedex)`;
         }
-        if(valorFreteUI) valorFreteUI.innerText = `R$ ${valorFrete.toFixed(2).replace('.', ',')} (Sedex)`;
     }
     atualizarResumoValores();
-}
+};
 
 function atualizarResumoValores() {
-    if(qtdItens) qtdItens.innerText = dadosCarrinho.itens.reduce((acc, item) => acc + (item.quantidade || 1), 0);
-    if(resumoSubtotal) resumoSubtotal.innerText = `R$ ${dadosCarrinho.subtotal.toFixed(2).replace('.', ',')}`;
-    if(resumoFrete) resumoFrete.innerText = valorFrete === 0 ? 'Grátis' : `R$ ${valorFrete.toFixed(2).replace('.', ',')}`;
-    
-    const divDesconto = document.getElementById('linhaDesconto');
-    const txtDesconto = document.getElementById('resumoDesconto');
+    const subtotal = parseFloat(dadosCarrinho.subtotal || dadosCarrinho.resumo?.subtotal || 0);
+    const totalItens = dadosCarrinho.itens?.reduce((acc, i) => acc + (i.quantidade || 1), 0) || 0;
+
+    if (qtdItens)       qtdItens.textContent       = totalItens;
+    if (resumoSubtotal) resumoSubtotal.textContent  = `R$ ${subtotal.toFixed(2).replace('.', ',')}`;
+    if (resumoFrete)    resumoFrete.textContent     = valorFrete === 0 ? 'Grátis' : `R$ ${valorFrete.toFixed(2).replace('.', ',')}`;
+
+    const divDesc = document.getElementById('linhaDesconto');
+    const txtDesc = document.getElementById('resumoDesconto');
     if (valorDesconto > 0) {
-        if(divDesconto) divDesconto.classList.remove('hidden');
-        if(txtDesconto) txtDesconto.innerText = `- R$ ${valorDesconto.toFixed(2).replace('.', ',')}`;
+        divDesc?.classList.remove('hidden');
+        if (txtDesc) txtDesc.textContent = `- R$ ${valorDesconto.toFixed(2).replace('.', ',')}`;
+    } else {
+        divDesc?.classList.add('hidden');
     }
-    
-    totalGeral = dadosCarrinho.subtotal + valorFrete - valorDesconto;
-    if(totalGeral < 0) totalGeral = 0; 
-    if(resumoTotal) resumoTotal.innerText = `R$ ${totalGeral.toFixed(2).replace('.', ',')}`;
-}
 
-window.alternarFormularioPagamento = function() {
-    const metodo = document.querySelector('input[name="metodo_pagamento"]:checked').value;
-    const fCartao = document.getElementById('formCartao');
-    const fGift = document.getElementById('formGiftCard');
-
-    if(fCartao) fCartao.classList.add('hidden');
-    if(fGift) fGift.classList.add('hidden');
-
-    if (metodo === 'credit' && fCartao) {
-        fCartao.classList.remove('hidden');
-        fCartao.classList.add('flex');
-    } else if (metodo === 'giftcard' && fGift) {
-        fGift.classList.remove('hidden');
-        fGift.classList.add('flex');
-    }
+    totalGeral = Math.max(0, subtotal + valorFrete - valorDesconto);
+    if (resumoTotal) resumoTotal.textContent = `R$ ${totalGeral.toFixed(2).replace('.', ',')}`;
 }
 
 // ==========================================
-// 5. MÁQUINA DE PAGAMENTO ASAAS
+// 5. MODAL DE ENDEREÇOS
 // ==========================================
-if(btnPagar) {
-    btnPagar.addEventListener('click', async () => {
-        const metodo = document.querySelector('input[name="metodo_pagamento"]:checked').value;
-        
-        const cpfRaw = cpfCompradorInput ? cpfCompradorInput.value : '';
-        const cpfLimpo = cpfRaw.replace(/\D/g, '');
-        
-        if (!cpfLimpo || cpfLimpo.length !== 11) {
-            alert("Por favor, preencha um CPF válido (11 dígitos).");
-            if(cpfCompradorInput) cpfCompradorInput.focus();
+window.abrirModalEnderecos = async function() {
+    const modal = document.getElementById('modalEnderecos');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    await renderizarListaEnderecos();
+};
+
+window.fecharModalEnderecos = function() {
+    const modal = document.getElementById('modalEnderecos');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    document.getElementById('boxNovoEndereco').classList.add('hidden');
+};
+
+async function renderizarListaEnderecos() {
+    const container = document.getElementById('listaEnderecosModal');
+    container.innerHTML = `<div class="text-center text-gray-500 text-sm py-4 animate-pulse">Carregando...</div>`;
+
+    try {
+        const headers = await getAuthHeaders();
+        const res = await fetch(`${API_CONFIG.baseUrl}/api/clientes/${cliente.id}/enderecos`, { headers });
+        const dados = await res.json();
+        todosEnderecos = Array.isArray(dados.data) ? dados.data : Array.isArray(dados) ? dados : [];
+
+        if (!todosEnderecos.length) {
+            container.innerHTML = `<p class="text-center text-gray-500 text-sm py-4">Nenhum endereço guardado.</p>`;
             return;
         }
 
+        container.innerHTML = todosEnderecos.map(end => {
+            const isAtivo = enderecoAtivo?.id === end.id;
+            const compl = end.complemento ? `, ${end.complemento}` : '';
+            return `
+                <div class="border ${isAtivo ? 'border-green-700 bg-green-900/10' : 'border-gray-800 bg-[#0a0a0a]'} rounded-lg p-4 flex items-start gap-3">
+                    <span class="material-symbols-outlined text-[18px] mt-0.5 ${isAtivo ? 'text-green-400' : 'text-gray-600'}">${end.tipo === 'casa' ? 'home' : end.tipo === 'trabalho' ? 'business' : 'location_on'}</span>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-xs font-bold uppercase text-gray-300">${end.tipo || 'Endereço'} ${end.principal ? '· Principal' : ''}</p>
+                        <p class="text-xs text-gray-400 mt-1">${end.rua}, ${end.numero}${compl}</p>
+                        <p class="text-xs text-gray-400">${end.bairro} — ${end.cidade}/${end.estado}</p>
+                        ${end.cep ? `<p class="text-[10px] text-gray-600 mt-0.5">CEP: ${end.cep}</p>` : ''}
+                    </div>
+                    <button onclick="window.selecionarEndereco(${end.id})" class="text-xs px-3 py-1.5 rounded ${isAtivo ? 'bg-green-700 text-white' : 'border border-gray-700 text-gray-400 hover:border-white hover:text-white'} font-bold uppercase tracking-wide whitespace-nowrap transition-colors">
+                        ${isAtivo ? '✓ Ativo' : 'Usar Este'}
+                    </button>
+                </div>`;
+        }).join('');
+
+    } catch (e) {
+        container.innerHTML = `<p class="text-center text-red-400 text-sm py-4">Falha ao carregar endereços.</p>`;
+    }
+}
+
+window.selecionarEndereco = function(endId) {
+    enderecoAtivo = todosEnderecos.find(e => e.id === endId);
+    if (!enderecoAtivo) return;
+    atualizarExibicaoEndereco();
+    window.calcularFrete();
+    window.fecharModalEnderecos();
+};
+
+window.toggleNovoEndereco = function() {
+    const box = document.getElementById('boxNovoEndereco');
+    box.classList.toggle('hidden');
+    if (!box.classList.contains('hidden')) box.classList.add('flex');
+    else box.classList.remove('flex');
+};
+
+window.buscarCep = async function() {
+    const cep = document.getElementById('novoEndCep').value.replace(/\D/g, '');
+    if (cep.length !== 8) { alert("CEP inválido. Digite os 8 dígitos."); return; }
+    try {
+        const res  = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+        const data = await res.json();
+        if (data.erro) { alert("CEP não encontrado."); return; }
+        document.getElementById('novoEndRua').value    = data.logradouro || '';
+        document.getElementById('novoEndBairro').value = data.bairro || '';
+        document.getElementById('novoEndCidade').value = data.localidade || '';
+        document.getElementById('novoEndEstado').value = data.uf || '';
+    } catch (e) {
+        alert("Falha ao buscar CEP. Preencha manualmente.");
+    }
+};
+
+window.salvarNovoEndereco = async function() {
+    const btn = document.querySelector('#boxNovoEndereco button[onclick="window.salvarNovoEndereco()"]');
+    const tipo       = document.getElementById('novoEndTipo').value;
+    const cep        = document.getElementById('novoEndCep').value.replace(/\D/g, '');
+    const rua        = document.getElementById('novoEndRua').value.trim();
+    const numero     = document.getElementById('novoEndNumero').value.trim();
+    const compl      = document.getElementById('novoEndComplemento').value.trim();
+    const bairro     = document.getElementById('novoEndBairro').value.trim();
+    const cidade     = document.getElementById('novoEndCidade').value.trim();
+    const estado     = document.getElementById('novoEndEstado').value;
+
+    if (!rua || !numero || !bairro || !cidade || !estado || cep.length !== 8) {
+        alert("Preencha todos os campos obrigatórios (*).");
+        return;
+    }
+
+    if (btn) { btn.textContent = "Salvando..."; btn.disabled = true; }
+
+    try {
+        const headers = await getAuthHeaders();
+        const payload = { tipo, rua, numero, bairro, cidade, estado, cep: `${cep.substring(0, 5)}-${cep.substring(5)}` };
+        if (compl) payload.complemento = compl;
+        if (!todosEnderecos.length) payload.principal = 1;
+
+        const res = await fetch(`${API_CONFIG.baseUrl}/api/clientes/${cliente.id}/enderecos`, {
+            method: 'POST',
+            headers: { ...headers, 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+            document.getElementById('boxNovoEndereco').classList.add('hidden');
+            await renderizarListaEnderecos();
+            // Seleciona o novo endereço automaticamente
+            const novoId = data.data?.id;
+            if (novoId) window.selecionarEndereco(novoId);
+        } else {
+            alert(data.message || "Erro ao salvar endereço.");
+        }
+    } catch (e) {
+        alert("Falha de comunicação ao salvar endereço.");
+    } finally {
+        if (btn) { btn.textContent = "Salvar Endereço"; btn.disabled = false; }
+    }
+};
+
+// ==========================================
+// 6. FORMULÁRIOS DE PAGAMENTO
+// ==========================================
+window.alternarFormularioPagamento = function() {
+    const metodo = document.querySelector('input[name="metodo_pagamento"]:checked')?.value || 'pix';
+    const fCartao = document.getElementById('formCartao');
+    const fGift   = document.getElementById('formGiftCard');
+    const aviso   = document.getElementById('avisoMetodo');
+    const boxParcelas = document.getElementById('boxParcelas');
+
+    fCartao?.classList.add('hidden');  fCartao?.classList.remove('flex');
+    fGift?.classList.add('hidden');    fGift?.classList.remove('flex');
+    if (aviso) aviso.classList.add('hidden');
+
+    if (metodo === 'credit') {
+        fCartao?.classList.remove('hidden'); fCartao?.classList.add('flex');
+        if (boxParcelas) boxParcelas.classList.remove('hidden');
+        if (aviso) { aviso.classList.remove('hidden'); aviso.textContent = "💳 Cartão de Crédito — até 6x sem juros."; }
+    } else if (metodo === 'debit') {
+        fCartao?.classList.remove('hidden'); fCartao?.classList.add('flex');
+        if (boxParcelas) boxParcelas.classList.add('hidden');
+        if (aviso) { aviso.classList.remove('hidden'); aviso.textContent = "💳 Cartão de Débito — aprovação imediata."; }
+    } else if (metodo === 'giftcard') {
+        fGift?.classList.remove('hidden'); fGift?.classList.add('flex');
+        if (aviso) { aviso.classList.remove('hidden'); aviso.textContent = "🎁 Gift Card — utilizará o saldo disponível no seu Cartão Presente."; }
+    } else if (metodo === 'pix') {
+        if (aviso) { aviso.classList.remove('hidden'); aviso.textContent = "⚡ PIX — aprovação em segundos. QR Code gerado após clicar em Finalizar."; }
+    } else if (metodo === 'boleto') {
+        if (aviso) { aviso.classList.remove('hidden'); aviso.textContent = "🏦 Boleto Bancário — compensação em até 2 dias úteis. O pedido é reservado no estoque."; }
+    }
+};
+
+// Inicializa aviso do PIX (selecionado por padrão)
+document.addEventListener('DOMContentLoaded', () => {
+    window.alternarFormularioPagamento();
+});
+
+// ==========================================
+// 7. MÁQUINA DE PAGAMENTO
+// ==========================================
+function getAsaasHeaders() {
+    return { 'Content-Type': 'application/json', 'X-Security-Key': ASAAS_SECURITY_KEY };
+}
+
+if (btnPagar) {
+    btnPagar.addEventListener('click', async () => {
+        const metodo  = document.querySelector('input[name="metodo_pagamento"]:checked')?.value;
+        const cpfRaw  = cpfCompradorInput?.value || '';
+        const cpfLimpo = cpfRaw.replace(/\D/g, '');
+
+        if (!cpfLimpo || cpfLimpo.length !== 11) {
+            alert("Por favor, preencha um CPF válido (11 dígitos).");
+            cpfCompradorInput?.focus();
+            return;
+        }
+
+        if (!enderecoAtivo && metodo !== 'giftcard') {
+            if (document.querySelector('input[name="tipo_entrega"]:checked')?.value !== 'retirada') {
+                alert("Selecione um endereço de entrega.");
+                return;
+            }
+        }
+
         btnPagar.innerHTML = `<span class="material-symbols-outlined animate-spin">sync</span> Validando com o Banco...`;
-        btnPagar.disabled = true;
+        btnPagar.disabled  = true;
 
         try {
-            let resultadoPagamento = null;
             const payloadBaseAsaas = {
-                amount: parseFloat(totalGeral.toFixed(2)), 
-                name: cliente.nome_completo || cliente.nome || "Cliente Boutique Diniz",
-                cpf: cpfLimpo, 
-                email: cliente.email || 'cliente@boutiquediniz.com',
-                description: `Boutique Diniz - Pedido ${codigoCupomAtivo ? '(Cupão: '+codigoCupomAtivo+')' : ''}`
+                amount:      parseFloat(totalGeral.toFixed(2)),
+                name:        cliente.nome_completo || cliente.nome || "Cliente Boutique Diniz",
+                cpf:         cpfLimpo,
+                email:       cliente.email || 'cliente@boutiquediniz.com',
+                description: `Boutique Diniz${codigoCupomAtivo ? ' · Cupom: ' + codigoCupomAtivo : ''}`
             };
 
-            if (metodo === 'pix') resultadoPagamento = await processarAsaasPix(payloadBaseAsaas);
-            else if (metodo === 'boleto') resultadoPagamento = await processarAsaasBoleto(payloadBaseAsaas);
-            else if (metodo === 'credit') resultadoPagamento = await processarAsaasCartaoCredito(payloadBaseAsaas);
-            else if (metodo === 'giftcard') resultadoPagamento = await processarGiftCardInterno();
+            let resultadoPagamento = null;
 
-            if (!resultadoPagamento || !resultadoPagamento.success) {
-                throw new Error(resultadoPagamento?.error || "Transação rejeitada.");
+            if      (metodo === 'pix')      resultadoPagamento = await processarAsaasPix(payloadBaseAsaas);
+            else if (metodo === 'boleto')   resultadoPagamento = await processarAsaasBoleto(payloadBaseAsaas);
+            else if (metodo === 'credit')   resultadoPagamento = await processarAsaasCartao(payloadBaseAsaas, 'credit');
+            else if (metodo === 'debit')    resultadoPagamento = await processarAsaasCartao(payloadBaseAsaas, 'debit');
+            else if (metodo === 'giftcard') resultadoPagamento = await processarGiftCard();
+
+            if (!resultadoPagamento?.success) {
+                throw new Error(resultadoPagamento?.error || "Transação recusada.");
             }
 
-            // --- PÓS-PAGAMENTO ---
+            // Pós-pagamento
             if (metodo === 'pix' || metodo === 'boleto') {
-                await finalizarPedidoNoBackEnd('aguardando', resultadoPagamento.paymentId);
+                await finalizarPedidoNoBackEnd('aguardando', resultadoPagamento.paymentId, metodo);
                 salvarTransacaoPendente({ metodo, payload: resultadoPagamento });
                 recuperarTransacaoPendente({ metodo, payload: resultadoPagamento });
             } else {
-                await finalizarPedidoNoBackEnd('aprovado', resultadoPagamento.paymentId || 'TX-GIFT');
+                await finalizarPedidoNoBackEnd('aprovado', resultadoPagamento.paymentId || `TX-${metodo.toUpperCase()}-${Date.now()}`, metodo);
                 window.mostrarTelaSucesso();
             }
 
         } catch (error) {
-            alert(`Aviso do Banco:\n${error.message}`);
+            alert(`⚠️ ${error.message}`);
             btnPagar.innerHTML = `<span class="material-symbols-outlined">lock</span> Finalizar Pagamento`;
-            btnPagar.disabled = false;
+            btnPagar.disabled  = false;
         }
     });
 }
 
-function getAsaasHeaders() {
-    return {
-        'Content-Type': 'application/json',
-        'X-Security-Key': ASAAS_SECURITY_KEY 
-    };
-}
-
-async function processarAsaasPix(payloadBase) {
-    const res = await fetch(`${ASAAS_API_BASE}/pay/pix`, {
-        method: 'POST', headers: getAsaasHeaders(), body: JSON.stringify(payloadBase)
-    });
+async function processarAsaasPix(payload) {
+    const res  = await fetch(`${ASAAS_API_BASE}/pay/pix`, { method: 'POST', headers: getAsaasHeaders(), body: JSON.stringify(payload) });
     const data = await res.json();
-    if(!res.ok) throw new Error(data.error || "O Banco Asaas está indisponível neste momento.");
+    if (!res.ok) throw new Error(data.error || "Asaas PIX indisponível.");
     return data;
 }
 
-async function processarAsaasBoleto(payloadBase) {
-    const res = await fetch(`${ASAAS_API_BASE}/pay/boleto`, {
-        method: 'POST', headers: getAsaasHeaders(), body: JSON.stringify(payloadBase)
-    });
+async function processarAsaasBoleto(payload) {
+    const res  = await fetch(`${ASAAS_API_BASE}/pay/boleto`, { method: 'POST', headers: getAsaasHeaders(), body: JSON.stringify(payload) });
     const data = await res.json();
-    if(!res.ok) throw new Error(data.error || "Erro ao gerar o seu boleto.");
+    if (!res.ok) throw new Error(data.error || "Erro ao gerar boleto.");
     return data;
 }
 
-async function processarAsaasCartaoCredito(payloadBase) {
-    const numero = document.getElementById('ccNumero').value.replace(/\D/g, ''); 
-    const nome = document.getElementById('ccNome').value;
-    const validade = document.getElementById('ccValidade').value;
-    const cvv = document.getElementById('ccCvv').value;
-    const parcelas = document.getElementById('ccParcelas').value;
+async function processarAsaasCartao(payloadBase, tipo) {
+    const numero   = document.getElementById('ccNumero')?.value.replace(/\D/g, '');
+    const nome     = document.getElementById('ccNome')?.value;
+    const validade = document.getElementById('ccValidade')?.value;
+    const cvv      = document.getElementById('ccCvv')?.value;
+    const parcelas = tipo === 'credit' ? (document.getElementById('ccParcelas')?.value || '1') : '1';
 
-    if(!numero || !nome || !validade || !cvv) throw new Error("Preencha todos os dados do cartão.");
+    if (!numero || !nome || !validade || !cvv) throw new Error("Preencha todos os dados do cartão.");
 
-    const partesValidade = validade.split('/');
-    if(partesValidade.length !== 2) throw new Error("Validade inválida. Use o formato MM/AA");
-    const expiryMonth = partesValidade[0];
-    const expiryYear = partesValidade[1].length === 2 ? `20${partesValidade[1]}` : partesValidade[1];
+    const partes = validade.split('/');
+    if (partes.length !== 2) throw new Error("Validade inválida. Use MM/AA.");
+    const expiryMonth = partes[0].padStart(2, '0');
+    const expiryYear  = partes[1].length === 2 ? `20${partes[1]}` : partes[1];
 
-    const payloadCartao = {
+    const endpoint = tipo === 'credit' ? '/pay/credit-card' : '/pay/debit-card';
+    const payload  = {
         ...payloadBase,
-        postalCode: enderecoAtivo.cep.replace(/\D/g, ''), 
-        addressNumber: enderecoAtivo.numero,
-        installments: parseInt(parcelas),
+        postalCode:    enderecoAtivo?.cep?.replace(/\D/g, '') || '',
+        addressNumber: enderecoAtivo?.numero || '0',
+        installments:  parseInt(parcelas),
         card: {
-            holderName: nome.toUpperCase(),
-            number: numero,
-            expiryMonth: expiryMonth,
-            expiryYear: expiryYear,
-            ccv: cvv
+            holderName:  nome.toUpperCase(),
+            number:      numero,
+            expiryMonth, expiryYear,
+            ccv:         cvv
         }
     };
-    
-    const res = await fetch(`${ASAAS_API_BASE}/pay/credit-card`, {
-        method: 'POST', headers: getAsaasHeaders(), body: JSON.stringify(payloadCartao)
-    });
+
+    const res  = await fetch(`${ASAAS_API_BASE}${endpoint}`, { method: 'POST', headers: getAsaasHeaders(), body: JSON.stringify(payload) });
     const data = await res.json();
-    if(!res.ok) throw new Error(data.error || "O Cartão de Crédito foi recusado pela operadora.");
+    if (!res.ok) throw new Error(data.error || "Cartão recusado pela operadora.");
     return data;
 }
 
-async function processarGiftCardInterno() {
-    const numero = document.getElementById('giftNumero').value;
-    const cvv = document.getElementById('giftCvv').value;
-    if(!numero || !cvv) throw new Error("Preencha os dados do Cartão Presente da loja.");
+async function processarGiftCard() {
+    const numero = document.getElementById('giftNumero')?.value.replace(/\D/g, '');
+    const cvv    = document.getElementById('giftCvv')?.value;
+    if (!numero || !cvv) throw new Error("Preencha os dados do Cartão Presente.");
 
     const headers = await getAuthHeaders();
-    const res = await fetch(`${API_CONFIG.baseUrl}/api/cartoes/resgatar`, {
+
+    // Passo 1 — busca pelo número para obter ID e saldo
+    const resBusca = await fetch(`${API_CONFIG.baseUrl}/api/cartoes/numero/${numero}`, { headers });
+    const dadosBusca = await resBusca.json();
+    if (!resBusca.ok || !dadosBusca.success) throw new Error(dadosBusca.message || "Cartão Presente não encontrado.");
+
+    const cartaoId = dadosBusca.data.id;
+    const saldo    = parseFloat(dadosBusca.data.saldo || 0);
+    if (saldo < totalGeral) {
+        throw new Error(`Saldo insuficiente no Gift Card. Disponível: R$ ${saldo.toFixed(2).replace('.', ',')} | Necessário: R$ ${totalGeral.toFixed(2).replace('.', ',')}`);
+    }
+
+    // Passo 2 — resgata pelo ID
+    const resResgate = await fetch(`${API_CONFIG.baseUrl}/api/cartoes/${cartaoId}/resgatar`, {
         method: 'POST',
         headers: { ...headers, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ numero: numero, codigo_seguranca: cvv, valor: totalGeral })
+        body: JSON.stringify({ valor: parseFloat(totalGeral.toFixed(2)), codigo_seguranca: cvv })
     });
+    const dadosResgate = await resResgate.json();
+    if (!resResgate.ok || !dadosResgate.success) throw new Error(dadosResgate.message || "Erro ao resgatar Gift Card.");
 
-    const data = await res.json();
-    if(res.ok && data.success) return { success: true, paymentId: `GIFT-${data.data.id}` };
-    else throw new Error(data.message || "Saldo insuficiente no cartão presente.");
+    return { success: true, paymentId: `GIFT-${cartaoId}` };
 }
 
 // ==========================================
-// 6. O COFRE DO PIX / BOLETO E REDIRECIONAMENTO
+// 8. FINALIZAR PEDIDO NO BACKEND
+// ==========================================
+async function finalizarPedidoNoBackEnd(statusPagamento, idExternoGateway, metodo) {
+    const headers    = await getAuthHeaders();
+    const headersJson = { ...headers, 'Content-Type': 'application/json' };
+
+    const tipoEntrega = document.querySelector('input[name="tipo_entrega"]:checked')?.value || 'correios';
+
+    // Mapa para nomes aceitos pela API
+    const mapaMetodo = { credit: 'credito', debit: 'debito', pix: 'pix', boleto: 'boleto', giftcard: 'giftcard' };
+    const pagTipo    = mapaMetodo[metodo] || metodo;
+
+    const payload = {
+        cliente_id:           cliente.id,
+        filial_origem_id:     1,
+        endereco_entrega_id:  enderecoAtivo?.id || null,
+        tipo_entrega:         tipoEntrega,
+        pagamento_tipo:       pagTipo,
+        pagamento_id_externo: idExternoGateway,
+        status_pagamento:     statusPagamento,
+        frete:                valorFrete,
+        cupom_codigo:         codigoCupomAtivo || undefined
+    };
+
+    // Parcelas (crédito)
+    if (metodo === 'credit') {
+        payload.pagamento_parcelas = parseInt(document.getElementById('ccParcelas')?.value || '1');
+    }
+
+    try {
+        const res = await fetch(`${API_CONFIG.baseUrl}/api/pedidos`, {
+            method: 'POST', headers: headersJson, body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+            const data = await res.json();
+            if (data.data?.id) localStorage.setItem('boutique_last_order_id', data.data.id);
+        } else {
+            console.error("API rejeitou o pedido:", await res.text());
+        }
+    } catch (e) {
+        console.error("Erro ao criar pedido:", e);
+    }
+
+    // Limpa carrinho
+    try {
+        await fetch(`${API_CONFIG.baseUrl}/api/carrinho/${cliente.id}`, { method: 'DELETE', headers: headersJson });
+        localStorage.setItem('boutique_cart_qty', '0');
+    } catch (e) {}
+    localStorage.removeItem('boutique_dados_checkout');
+}
+
+// ==========================================
+// 9. PIX — POLLING E TELA
 // ==========================================
 function salvarTransacaoPendente(dados) {
     localStorage.setItem('boutique_pending_tx', JSON.stringify(dados));
 }
 
 function recuperarTransacaoPendente(tx) {
-    if(checkoutForm) checkoutForm.classList.add('hidden');
-    if(loadingState) loadingState.classList.add('hidden');
-    
-    if(transactionState) {
-        transactionState.classList.remove('hidden');
-        transactionState.classList.add('flex');
-    }
+    checkoutForm?.classList.add('hidden');
+    loadingState?.classList.add('hidden');
+    transactionState?.classList.remove('hidden');
+    transactionState?.classList.add('flex');
 
     if (tx.metodo === 'pix') {
-        const boxPix = document.getElementById('boxPix');
-        if(boxPix) { boxPix.classList.remove('hidden'); boxPix.classList.add('flex'); }
-        
-        let qrSrc = tx.payload.pix.qrCodeImage || tx.payload.pix.encodedImage || "";
-        if (qrSrc && !qrSrc.startsWith('data:image') && !qrSrc.startsWith('http')) {
-            qrSrc = 'data:image/png;base64,' + qrSrc;
-        }
-        
-        document.getElementById('qrCodePix').src = qrSrc;
-        document.getElementById('copiaColaPix').value = tx.payload.pix.copyPaste || tx.payload.pix.payload;
+        const box = document.getElementById('boxPix');
+        box?.classList.remove('hidden'); box?.classList.add('flex');
+
+        let qrSrc = tx.payload.pix?.qrCodeImage || tx.payload.pix?.encodedImage || "";
+        if (qrSrc && !qrSrc.startsWith('data:image') && !qrSrc.startsWith('http')) qrSrc = 'data:image/png;base64,' + qrSrc;
+        const qrEl = document.getElementById('qrCodePix');
+        if (qrEl) qrEl.src = qrSrc;
+
+        const copiaEl = document.getElementById('copiaColaPix');
+        if (copiaEl) copiaEl.value = tx.payload.pix?.copyPaste || tx.payload.pix?.payload || "";
 
         iniciarMonitoramentoPix(tx.payload.paymentId);
+
     } else if (tx.metodo === 'boleto') {
-        const boxBoleto = document.getElementById('boxBoleto');
-        if(boxBoleto) { boxBoleto.classList.remove('hidden'); boxBoleto.classList.add('flex'); }
-        document.getElementById('linkBoleto').href = tx.payload.boletoUrl;
+        const box = document.getElementById('boxBoleto');
+        box?.classList.remove('hidden'); box?.classList.add('flex');
+        const linkEl = document.getElementById('linkBoleto');
+        if (linkEl) linkEl.href = tx.payload.boletoUrl || tx.payload.bankSlipUrl || '#';
     }
 }
 
 window.copiarPix = function() {
-    const copyText = document.getElementById("copiaColaPix");
-    copyText.select();
-    document.execCommand("copy");
-    alert("Código PIX copiado! Cole na aplicação do seu banco.");
-}
+    const el = document.getElementById('copiaColaPix');
+    if (el) { el.select(); document.execCommand('copy'); alert("Código PIX copiado! Cole no app do seu banco."); }
+};
 
 function iniciarMonitoramentoPix(paymentId) {
     if (pollingInterval) clearInterval(pollingInterval);
-    
     pollingInterval = setInterval(async () => {
         try {
-            const res = await fetch(`${ASAAS_API_BASE}/payment/status/${paymentId}`, { headers: getAsaasHeaders() });
+            const res  = await fetch(`${ASAAS_API_BASE}/payment/status/${paymentId}`, { headers: getAsaasHeaders() });
             const data = await res.json();
-            
             if (data.success && data.paid === true) {
                 clearInterval(pollingInterval);
-                await atualizarStatusPedidoInterno('aprovado');
-                window.mostrarTelaSucesso(); 
+                await atualizarStatusPedidoInterno('aprovado', paymentId);
+                window.mostrarTelaSucesso();
             }
         } catch (e) {}
-    }, 5000); 
+    }, 5000);
 }
 
-window.concluirPedidoBoleto = function() {
-    window.mostrarTelaSucesso();
-}
-
-// ==========================================
-// 7. GERAÇÃO DO PEDIDO (COM DADOS OBRIGATÓRIOS DA API) E LIMPEZA DE CARRINHO
-// ==========================================
-async function finalizarPedidoNoBackEnd(statusPagamento, idExternoGateway) {
-    const headers = await getAuthHeaders();
-    const headersJson = { ...headers, 'Content-Type': 'application/json' };
-    
-    // 1. TENTA CRIAR O PEDIDO NA API V3 (INCLUI FILIAL E ENDEREÇO CORRETOS)
-    try {
-        const payloadPedido = {
-            cliente_id: cliente.id,
-            filial_origem_id: 1, // CAMPO OBRIGATÓRIO PARA A API V3 ACEITAR
-            endereco_entrega_id: enderecoAtivo.id, // NOME CORRETO DO CAMPO
-            pagamento_tipo: document.querySelector('input[name="metodo_pagamento"]:checked')?.value || 'pix',
-            valor_frete: valorFrete,
-            frete: valorFrete, // Enviando ambos por precaução
-            cupom_codigo: codigoCupomAtivo,
-            status_pedido: 'novo', 
-            status_pagamento: statusPagamento, 
-            pagamento_id_externo: idExternoGateway,
-            itens: dadosCarrinho.itens.map(i => ({
-                produto_variante_id: i.produto_variante_id || (i.variante ? i.variante.id : i.id),
-                quantidade: i.quantidade,
-                preco_unitario: i.preco_final || i.produto.preco || i.preco
-            }))
-        };
-
-        const res = await fetch(`${API_CONFIG.baseUrl}/api/pedidos`, {
-            method: 'POST',
-            headers: headersJson,
-            body: JSON.stringify(payloadPedido)
-        });
-
-        if(res.ok) {
-            const dataPedido = await res.json();
-            if (dataPedido.data && dataPedido.data.id) {
-                localStorage.setItem('boutique_last_order_id', dataPedido.data.id);
-            }
-        } else {
-            console.error("A API rejeitou a criação do pedido.");
-        }
-    } catch (e) {
-        console.error("Falha ao comunicar a criação do pedido.", e);
-    }
-
-    // 2. ESVAZIA O CARRINHO (Ação Obrigatória e Independente com DELETE)
-    try {
-        let deleteRes = await fetch(`${API_CONFIG.baseUrl}/api/carrinho/${cliente.id}`, { 
-            method: 'DELETE', 
-            headers: headersJson 
-        });
-
-        // Fallback: Se o DELETE der erro 404, tenta o POST /limpar documentado no PDF
-        if (!deleteRes.ok) {
-            await fetch(`${API_CONFIG.baseUrl}/api/carrinho/${cliente.id}/limpar`, { 
-                method: 'POST', 
-                headers: headersJson 
-            });
-        }
-        
-        localStorage.setItem('boutique_cart_qty', '0'); // Zera bolinha visual no navegador
-    } catch (e) {
-        console.error("Falha ao limpar o carrinho.", e);
-    }
-}
-
-async function atualizarStatusPedidoInterno(novoStatus) {
+async function atualizarStatusPedidoInterno(status, paymentId) {
     try {
         const pedidoId = localStorage.getItem('boutique_last_order_id');
-        if(!pedidoId) return;
-
+        if (!pedidoId) return;
         const headers = await getAuthHeaders();
         await fetch(`${API_CONFIG.baseUrl}/api/pedidos/${pedidoId}/status-pagamento`, {
             method: 'PATCH',
             headers: { ...headers, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status_pagamento: novoStatus })
+            body: JSON.stringify({ status_pagamento: status, pagamento_id_externo: paymentId, pagamento_status_detalhado: 'approved' })
         });
     } catch (e) {}
 }
 
-// Redireciona diretamente para a página de sucesso
+window.concluirPedidoBoleto = function() {
+    window.mostrarTelaSucesso();
+};
+
 window.mostrarTelaSucesso = function() {
     localStorage.removeItem('boutique_pending_tx');
-    localStorage.removeItem('boutique_dados_checkout');
     window.location.href = 'sucesso.html';
-}
+};

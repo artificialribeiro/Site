@@ -88,37 +88,11 @@
                 <button id="btnPendentePagar" class="w-full bg-white text-black font-bold uppercase tracking-widest py-4 rounded hover:bg-gray-200 transition-colors flex items-center justify-center gap-2 shadow-lg">
                     <span class="material-symbols-outlined">payments</span> Realizar Pagamento
                 </button>
+                <button id="btnPendenteOrdem" class="hidden w-full bg-purple-700 text-white font-bold uppercase tracking-widest py-4 rounded hover:bg-purple-600 transition-colors flex items-center justify-center gap-2 shadow-lg">
+                    <span class="material-symbols-outlined">receipt_long</span> Gerar Ordem de Retirada (PDF)
+                </button>
                 <button onclick="window.fecharModalPendente()" class="text-gray-500 hover:text-white underline text-xs mt-2">Fechar aviso</button>
             </div>
-        </div>
-    </div>
-
-    <div id="modalComprovante" class="fixed inset-0 bg-black/90 z-[999] hidden items-center justify-center p-4 backdrop-blur-sm overflow-y-auto">
-        <div class="w-full max-w-sm ticket-bg rounded-xl p-8 modal-animate text-center shadow-2xl my-8">
-            <h2 class="font-logo text-3xl text-white mb-2">Boutique Diniz</h2>
-            <p class="text-[10px] uppercase tracking-widest text-gray-500 mb-6">Ticket de Retirada Física</p>
-            
-            <div class="bg-white p-3 rounded-lg inline-block mb-6 shadow-inner">
-                <img src="" id="qrRetirada" class="w-32 h-32">
-            </div>
-
-            <div class="text-left space-y-3 mb-4 pb-4 border-b border-gray-800">
-                <p class="text-xs text-gray-400">Pedido: <span class="text-white font-bold float-right" id="compPedido">#0000</span></p>
-                <p class="text-xs text-gray-400">Cliente: <span class="text-white font-bold float-right truncate max-w-[150px]" id="compCliente">Nome</span></p>
-                <p class="text-xs text-gray-400">Status: <span class="text-green-400 font-bold float-right">PAGO</span></p>
-            </div>
-
-            <div class="text-left mb-6">
-                <h3 class="text-[10px] uppercase tracking-widest text-gray-500 mb-3">Itens a Retirar:</h3>
-                <div id="compItens" class="flex flex-col gap-2 max-h-40 overflow-y-auto custom-scroll pr-2">
-                    </div>
-            </div>
-
-            <p class="text-[11px] text-yellow-500 border border-yellow-900 bg-yellow-900/20 p-3 rounded mb-6">
-                Apresente esta tela no balcão da loja para a atendente separar a sua encomenda.
-            </p>
-
-            <button onclick="window.fecharModalComprovante()" class="w-full bg-white text-black font-bold uppercase tracking-widest py-3 rounded hover:bg-gray-200">Fechar</button>
         </div>
     </div>
 
