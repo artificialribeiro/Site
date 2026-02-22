@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meus Pedidos | Boutique Diniz</title>
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="icon" type="image/png" href="logo.png">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Satisfy&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,300,0,0" rel="stylesheet" />
+
+    <style>
+        body { background-color: #000; color: #fff; font-family: 'Montserrat', sans-serif; }
+        .font-logo { font-family: 'Satisfy', cursive; }
+        .modal-animate { animation: slideUp 0.3s ease-out forwards; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .ticket-bg {
+            background: linear-gradient(135deg, #111 0%, #0a0a0a 100%);
+            border: 1px dashed #333;
+            position: relative;
+        }
+        .ticket-bg::before, .ticket-bg::after {
+            content: ''; position: absolute; top: 50%; width: 20px; height: 20px; background: #000; border-radius: 50%; transform: translateY(-50%);
+        }
+        .ticket-bg::before { left: -10px; border-right: 1px dashed #333; }
+        .ticket-bg::after { right: -10px; border-left: 1px dashed #333; }
+    </style>
+
+    <script src="seguranca.js"></script>
+</head>
+<body class="bg-[#000000] text-white min-h-screen flex flex-col antialiased">
+
+    <div id="app-header"></div>
+
+    <main class="flex-grow pt-8 pb-16 max-w-5xl mx-auto w-full px-4">
+        
+        <div class="flex items-center justify-between mb-8 border-b border-gray-900 pb-4">
+            <h1 class="text-3xl font-light text-white font-logo">Meus Pedidos</h1>
+        </div>
+
+        <div id="loadingState" class="flex items-center justify-center py-20 flex-col gap-4">
+            <span class="material-symbols-outlined animate-spin text-4xl text-gray-500">sync</span>
+            <p class="text-xs uppercase tracking-widest text-gray-500">Buscando o seu histórico...</p>
+        </div>
+
+        <div id="ordersContainer" class="hidden flex-col gap-6">
+            </div>
+
+        <div id="emptyState" class="hidden flex-col items-center justify-center py-20 text-center border border-gray-900 rounded-lg bg-[#050505]">
+            <span class="material-symbols-outlined text-6xl text-gray-800 mb-4">shopping_bag</span>
+            <h2 class="text-xl font-medium text-white mb-2">Nenhum pedido encontrado</h2>
+            <p class="text-gray-500 text-sm mb-8">Você ainda não realizou nenhuma compra connosco.</p>
+            <a href="site.html" class="bg-white text-black px-8 py-3 rounded font-bold uppercase tracking-widest hover:bg-gray-200 transition-colors">Explorar Coleção</a>
+        </div>
+
+    </main>
+
+    <div id="modalComprovante" class="fixed inset-0 bg-black/90 z-[999] hidden items-center justify-center p-4 backdrop-blur-sm">
+        <div class="w-full max-w-sm ticket-bg rounded-xl p-8 modal-animate text-center shadow-2xl">
+            <h2 class="font-logo text-3xl text-white mb-2">Boutique Diniz</h2>
+            <p class="text-[10px] uppercase tracking-widest text-gray-500 mb-6">Comprovante de Retirada</p>
+            
+            <div class="bg-white p-4 rounded-lg inline-block mb-6">
+                <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=BOUTIQUE_DINIZ_RETIRADA" id="qrRetirada" class="w-32 h-32">
+            </div>
+
+            <div class="text-left space-y-3 mb-6">
+                <p class="text-xs text-gray-400">Pedido: <span class="text-white font-bold float-right" id="compPedido">#0000</span></p>
+                <p class="text-xs text-gray-400">Cliente: <span class="text-white font-bold float-right truncate max-w-[150px]" id="compCliente">Nome</span></p>
+                <p class="text-xs text-gray-400">Status: <span class="text-green-400 font-bold float-right">PAGO</span></p>
+            </div>
+
+            <p class="text-xs text-yellow-500 border border-yellow-900 bg-yellow-900/20 p-3 rounded mb-6">
+                Apresente esta tela no balcão da loja física para retirar a sua encomenda.
+            </p>
+
+            <button onclick="fecharModalComprovante()" class="w-full bg-white text-black font-bold uppercase tracking-widest py-3 rounded hover:bg-gray-200">Fechar</button>
+        </div>
+    </div>
+
+    <div id="modalPagamento" class="fixed inset-0 bg-black/90 z-[999] hidden items-center justify-center p-4 backdrop-blur-sm overflow-y-auto">
+        <div class="bg-[#050505] border border-gray-800 w-full max-w-lg rounded-xl p-6 shadow-2xl modal-animate my-8">
+            <div class="flex justify-between items-center mb-6 border-b border-gray-900 pb-4">
+                <h2 class="text-lg font-bold text-white uppercase tracking-widest">Pagar Pedido <span id="pagPedidoId" class="text-gray-500"></span></h2>
+                <button onclick="fecharModalPagamento()" class="text-gray-500 hover:text-white"><span class="material-symbols-outlined">close</span></button>
+            </div>
+
+            <div id="pagFormularios">
+                <div class="grid grid-cols-3 gap-3 mb-6">
+                    <label class="cursor-pointer text-center border border-gray-800 rounded p-3 hover:bg-[#111] transition-colors" onclick="selecionarNovaForma('pix')">
+                        <img src="https://logospng.org/download/pix/logo-pix-icone-512.png" class="h-6 mx-auto mb-2 opacity-80">
+                        <span class="text-[10px] font-bold uppercase">PIX</span>
+                    </label>
+                    <label class="cursor-pointer text-center border border-gray-800 rounded p-3 hover:bg-[#111] transition-colors" onclick="selecionarNovaForma('credit')">
+                        <span class="material-symbols-outlined text-gray-400 block mb-1">credit_card</span>
+                        <span class="text-[10px] font-bold uppercase">Cartão</span>
+                    </label>
+                    <label class="cursor-pointer text-center border border-gray-800 rounded p-3 hover:bg-[#111] transition-colors" onclick="selecionarNovaForma('giftcard')">
+                        <span class="material-symbols-outlined text-gray-400 block mb-1">card_giftcard</span>
+                        <span class="text-[10px] font-bold uppercase">Gift Card</span>
+                    </label>
+                </div>
+
+                <div id="novoFormCartao" class="hidden flex-col gap-4 bg-[#0a0a0a] p-4 rounded border border-gray-800 mb-6">
+                    <input type="text" id="novoCcNumero" class="w-full bg-[#111] border border-gray-800 rounded px-3 py-2 text-sm text-white outline-none" placeholder="Número do Cartão">
+                    <input type="text" id="novoCcNome" class="w-full bg-[#111] border border-gray-800 rounded px-3 py-2 text-sm text-white outline-none uppercase" placeholder="Nome Impresso">
+                    <div class="grid grid-cols-2 gap-4">
+                        <input type="text" id="novoCcValidade" class="w-full bg-[#111] border border-gray-800 rounded px-3 py-2 text-sm text-white outline-none" placeholder="MM/AA" maxlength="7">
+                        <input type="password" id="novoCcCvv" class="w-full bg-[#111] border border-gray-800 rounded px-3 py-2 text-sm text-white outline-none" placeholder="CVV" maxlength="4">
+                    </div>
+                    <select id="novoCcParcelas" class="w-full bg-[#111] border border-gray-800 rounded px-3 py-2 text-sm text-white outline-none">
+                        <option value="1">1x sem juros</option>
+                        <option value="2">2x sem juros</option>
+                        <option value="3">3x sem juros</option>
+                    </select>
+                </div>
+
+                <div id="novoFormGift" class="hidden flex-col gap-4 bg-[#0a0a0a] p-4 rounded border border-gray-800 mb-6">
+                    <input type="text" id="novoGiftNumero" class="w-full bg-[#111] border border-gray-800 rounded px-3 py-2 text-sm text-white outline-none" maxlength="16" placeholder="Cartão (16 dígitos)">
+                    <input type="password" id="novoGiftCvv" class="w-full bg-[#111] border border-gray-800 rounded px-3 py-2 text-sm text-white outline-none" maxlength="4" placeholder="Código de Segurança">
+                </div>
+
+                <div class="flex justify-between items-center mb-6">
+                    <span class="text-sm text-gray-400">Total a Pagar</span>
+                    <span id="novoValorTotal" class="text-xl font-bold text-white">R$ 0,00</span>
+                </div>
+
+                <button id="btnConfirmarNovoPagamento" onclick="processarNovoPagamento()" class="hidden w-full bg-green-600 text-white font-bold uppercase tracking-widest py-4 rounded hover:bg-green-500 transition-colors shadow-lg">
+                    Confirmar Pagamento
+                </button>
+            </div>
+
+            <div id="novoPixArea" class="hidden flex-col items-center gap-4">
+                <h3 class="text-green-400 font-bold">Leia o QR Code</h3>
+                <div class="bg-white p-2 rounded-lg"><img id="novoQrPix" src="" class="w-48 h-48"></div>
+                <input type="text" id="novoCopiaCola" readonly class="w-full bg-[#111] border border-gray-800 rounded px-3 py-2 text-xs text-gray-400 outline-none text-center">
+                <button onclick="copiarNovoPix()" class="bg-gray-800 text-white px-4 py-2 rounded text-xs font-bold hover:bg-gray-700">Copiar Código</button>
+                <p class="text-xs text-yellow-500 animate-pulse mt-2">Aguardando confirmação do banco...</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="app-footer"></div>
+
+    <script type="module">
+        import { inicializarLayout } from './layout.js';
+        inicializarLayout(); 
+        setTimeout(() => {
+            import('./compras-logic.js').catch(e => console.error("Falha ao carregar motor", e));
+        }, 150);
+    </script>
+</body>
+</html>
