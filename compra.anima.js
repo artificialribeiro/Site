@@ -297,7 +297,7 @@ if(btnPagar) {
                 recuperarTransacaoPendente({ metodo, payload: resultadoPagamento });
             } else {
                 await finalizarPedidoNoBackEnd('aprovado', resultadoPagamento.paymentId || 'TX-GIFT');
-                dispararAnimacaoMovel();
+                mostrarTelaSucesso();
             }
 
         } catch (error) {
@@ -369,7 +369,7 @@ async function processarGiftCardInterno() {
 }
 
 // ==========================================
-// 5. O COFRE DO PIX / BOLETO
+// 5. O COFRE DO PIX E BOLETO
 // ==========================================
 function salvarTransacaoPendente(dados) {
     localStorage.setItem('boutique_pending_tx', JSON.stringify(dados));
@@ -418,18 +418,18 @@ function iniciarMonitoramentoPix(paymentId) {
             if (data.success && data.paid === true) {
                 clearInterval(pollingInterval);
                 await atualizarStatusPedidoInterno('aprovado');
-                dispararAnimacaoMovel(); // <- Roda a animação quando o PIX cai!
+                mostrarTelaSucesso(); 
             }
         } catch (e) {}
     }, 5000); 
 }
 
 window.concluirPedidoBoleto = function() {
-    dispararAnimacaoMovel();
+    mostrarTelaSucesso();
 }
 
 // ==========================================
-// 6. FINALIZAÇÃO E ANIMAÇÃO MÁGICA
+// 6. FINALIZAÇÃO, LIMPEZA DE CARRINHO E REDIRECIONAMENTO
 // ==========================================
 async function finalizarPedidoNoBackEnd(statusPagamento, idExternoGateway) {
     try {
@@ -460,7 +460,7 @@ async function finalizarPedidoNoBackEnd(statusPagamento, idExternoGateway) {
             const dataPedido = await res.json();
             if (dataPedido.data && dataPedido.data.id) localStorage.setItem('boutique_last_order_id', dataPedido.data.id);
 
-            [span_2](start_span)[span_3](start_span)// GATILHO OFICIAL: Limpa o Carrinho no Banco usando DELETE[span_2](end_span)[span_3](end_span)
+            // GATILHO OFICIAL: Remove o Carrinho da API através de DELETE
             await fetch(`${API_CONFIG.baseUrl}/api/carrinho/${cliente.id}`, { 
                 method: 'DELETE', 
                 headers: headersJson 
@@ -483,34 +483,9 @@ async function atualizarStatusPedidoInterno(novoStatus) {
     } catch (e) {}
 }
 
-// Esta função injeta o script "animacao.compra.js" direto na tela e clica no botão sem redirecionar!
-window.dispararAnimacaoMovel = function() {
+// Redireciona diretamente e de forma limpa para a página mágica da animação
+window.mostrarTelaSucesso = function() {
     localStorage.removeItem('boutique_pending_tx');
     localStorage.removeItem('boutique_dados_checkout');
-    
-    // Oculta a tela do cofre para não atrapalhar
-    if(transactionState) transactionState.classList.add('hidden');
-
-    // Cria a injeção do arquivo da animação no topo da tela atual
-    const script = document.createElement('script');
-    script.src = 'animacao.compra.js';
-    document.body.appendChild(script);
-
-    // Sistema que procura o botão da animação e clica sozinho
-    let tentativas = 0;
-    const radarBotao = setInterval(() => {
-        const btn = document.getElementById('bd-btnOrder');
-        if (btn) {
-            clearInterval(radarBotao);
-            btn.style.display = 'none'; // Esconde para a cliente não ver
-            btn.click(); // Chama a Van da Boutique Diniz!
-            
-            // Redireciona para o histórico de compras após 14.5 segundos (quando a tela escurece)
-            setTimeout(() => {
-                window.location.href = 'minhas-compras.html';
-            }, 14500);
-        }
-        if(tentativas > 50) clearInterval(radarBotao); 
-        tentativas++;
-    }, 200);
+    window.location.href = 'sucesso.html';
 }

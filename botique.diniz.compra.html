@@ -26,29 +26,26 @@
 
     <script src="seguranca.js"></script>
 </head>
-<body class="bg-[#000000] text-white min-h-screen flex flex-col antialiased relative">
+<body class="bg-[#000000] text-white min-h-screen flex flex-col antialiased">
 
-    <header class="w-full border-b border-gray-900 bg-[#0a0a0a] py-4 sticky top-0 z-50 shadow-md">
-        <div class="max-w-4xl mx-auto px-4 flex justify-between items-center">
-            <h1 class="font-logo text-2xl text-white">Boutique Diniz</h1>
-            <div class="flex items-center gap-2 text-green-500 text-xs font-bold uppercase tracking-widest bg-green-900/20 px-3 py-1 rounded-full border border-green-900/30">
-                <span class="material-symbols-outlined text-[16px]">lock</span> Ambiente Seguro
-            </div>
-        </div>
-    </header>
+    <div id="app-header"></div>
 
     <main class="flex-grow pt-8 pb-16 max-w-4xl mx-auto w-full px-4">
         
         <div id="loadingState" class="flex items-center justify-center py-20 flex-col gap-4">
             <span class="material-symbols-outlined animate-spin text-4xl text-gray-500">sync</span>
-            <p class="text-xs uppercase tracking-widest text-gray-500">Preparando o seu pedido...</p>
+            <p class="text-xs uppercase tracking-widest text-gray-500">A preparar o seu pedido...</p>
         </div>
 
         <div id="checkoutForm" class="hidden flex-col gap-6">
             
+            <div class="flex items-center gap-2 text-green-500 text-xs font-bold uppercase tracking-widest bg-green-900/20 px-4 py-2 rounded-full border border-green-900/30 w-max mx-auto mb-4">
+                <span class="material-symbols-outlined text-[16px]">lock</span> Finalização Segura
+            </div>
+
             <section class="bg-[#050505] border border-gray-900 rounded-lg p-6 shadow-lg">
                 <h2 class="text-sm uppercase tracking-widest text-gray-400 mb-4 flex items-center gap-2 border-b border-gray-900 pb-2">
-                    <span class="material-symbols-outlined text-[18px]">shopping_bag</span> 1. Seus Looks
+                    <span class="material-symbols-outlined text-[18px]">shopping_bag</span> 1. Os Seus Looks
                 </h2>
                 <div id="listaItensCompra" class="flex flex-col gap-3 max-h-[300px] overflow-y-auto custom-scroll pr-2"></div>
             </section>
@@ -65,7 +62,7 @@
                             <div class="radio-dot w-4 h-4 rounded-full border-2 border-gray-600 transition-colors flex-shrink-0"></div>
                             <div>
                                 <h3 class="font-bold text-sm">Receber em Casa</h3>
-                                <p class="text-xs text-gray-500 mt-1" id="txtEnderecoDestino">Carregando endereço...</p>
+                                <p class="text-xs text-gray-500 mt-1" id="txtEnderecoDestino">A carregar endereço...</p>
                             </div>
                         </div>
                     </label>
@@ -112,7 +109,7 @@
                         <input type="radio" name="metodo_pagamento" value="credit" class="payment-radio sr-only" onchange="alternarFormularioPagamento()">
                         <div class="border border-gray-800 rounded p-3 text-center flex flex-col items-center justify-center gap-2 h-full bg-[#0a0a0a] hover:bg-[#111]">
                             <span class="material-symbols-outlined text-gray-400">credit_card</span>
-                            <span class="text-xs font-bold">Cartão Crédito</span>
+                            <span class="text-xs font-bold">Cartão</span>
                         </div>
                     </label>
                     <label class="cursor-pointer">
@@ -163,13 +160,14 @@
                 </div>
 
                 <div id="formGiftCard" class="hidden flex-col gap-4 bg-[#0a0a0a] p-5 rounded-lg border border-gray-800 shadow-inner">
+                    <p class="text-xs text-gray-400 mb-2">Utilize o saldo do seu Cartão Presente Boutique Diniz.</p>
                     <div class="grid grid-cols-3 gap-4">
                         <div class="col-span-2">
                             <label class="block text-[10px] uppercase tracking-widest text-gray-500 mb-1">Número do Cartão</label>
                             <input type="text" id="giftNumero" class="w-full bg-[#111] border border-gray-800 rounded px-3 py-3 text-sm text-white outline-none" maxlength="16" placeholder="0000 0000 0000 0000">
                         </div>
                         <div>
-                            <label class="block text-[10px] uppercase tracking-widest text-gray-500 mb-1">CVV</label>
+                            <label class="block text-[10px] uppercase tracking-widest text-gray-500 mb-1">Código</label>
                             <input type="password" id="giftCvv" class="w-full bg-[#111] border border-gray-800 rounded px-3 py-3 text-sm text-white outline-none" maxlength="4" placeholder="0000">
                         </div>
                     </div>
@@ -224,7 +222,7 @@
                     </div>
                 </div>
                 <div class="flex items-center gap-2 mt-6 text-sm text-yellow-500 bg-yellow-900/20 px-6 py-3 rounded-full border border-yellow-700/30">
-                    <span class="material-symbols-outlined text-[18px] animate-spin">sync</span> Aguardando banco...
+                    <span class="material-symbols-outlined text-[18px] animate-spin">sync</span> Aguardando identificação do banco...
                 </div>
             </div>
 

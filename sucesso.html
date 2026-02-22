@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Boutique Diniz - Pedido Confirmado!</title>
+    <style>
+        body { background-color: #050505; margin: 0; overflow: hidden; }
+        /* Esconde o botão para que a animação arranque sozinha como magia */
+        #bd-btnOrder { display: none !important; }
+    </style>
+</head>
+<body>
+
+    <script src="animacao.compra.js"></script>
+
+    <script>
+        window.onload = () => {
+            let tentativas = 0;
+            const radar = setInterval(() => {
+                const btn = document.getElementById('bd-btnOrder');
+                if (btn) {
+                    clearInterval(radar);
+                    btn.click(); // Inicia a Van da Boutique Diniz!
+                    
+                    // Redireciona para o histórico após a tela escurecer (14.5 segundos)
+                    setTimeout(() => {
+                        window.location.href = 'minhas-compras.html';
+                    }, 14500);
+                }
+                if(tentativas > 50) clearInterval(radar); // Trava de segurança
+                tentativas++;
+            }, 100);
+        };
+    </script>
+</body>
+</html>
