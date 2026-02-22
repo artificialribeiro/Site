@@ -47,8 +47,7 @@
                 <h2 class="text-sm uppercase tracking-widest text-gray-400 mb-4 flex items-center gap-2 border-b border-gray-900 pb-2">
                     <span class="material-symbols-outlined text-[18px]">shopping_bag</span> 1. Seus Looks
                 </h2>
-                <div id="listaItensCompra" class="flex flex-col gap-3 max-h-[300px] overflow-y-auto custom-scroll pr-2">
-                    </div>
+                <div id="listaItensCompra" class="flex flex-col gap-3 max-h-[300px] overflow-y-auto custom-scroll pr-2"></div>
             </section>
 
             <section class="bg-[#050505] border border-gray-900 rounded-lg p-6 shadow-lg">
@@ -169,7 +168,7 @@
                     <p class="text-xs text-gray-400 mb-2">Utilize o saldo do seu Cartão Presente Boutique Diniz.</p>
                     <div class="grid grid-cols-3 gap-4">
                         <div class="col-span-2">
-                            <label class="block text-[10px] uppercase tracking-widest text-gray-500 mb-1">Número do Cartão</label>
+                            <label class="block text-[10px] uppercase tracking-widest text-gray-500 mb-1">Número do Cartão (16 dígitos)</label>
                             <input type="text" id="giftNumero" class="w-full bg-[#111] border border-gray-800 rounded px-3 py-3 text-sm text-white outline-none" maxlength="16" placeholder="0000 0000 0000 0000">
                         </div>
                         <div>
@@ -222,20 +221,21 @@
 
             <div id="boxBoleto" class="hidden flex-col items-center gap-5 w-full">
                 <h2 class="text-2xl font-bold text-green-400 font-logo">Boleto Gerado!</h2>
-                <p class="text-sm text-gray-400 mb-6">O seu pedido foi reservado com sucesso no estoque. O pagamento pode levar até 2 dias úteis para compensar.</p>
+                <p class="text-sm text-gray-400 mb-6">O seu pedido foi reservado com sucesso no estoque.</p>
                 <a id="linkBoleto" href="#" target="_blank" class="bg-white text-black px-8 py-4 rounded font-bold uppercase tracking-widest hover:bg-gray-200 transition-colors shadow-lg">
                     Imprimir / Ver Boleto
                 </a>
                 <div class="mt-10 pt-8 border-t border-gray-900 w-full">
-                    <button onclick="window.concluirPedidoBoleto()" class="text-gray-500 hover:text-white underline text-sm transition-colors">Voltar para a Loja</button>
+                    <button onclick="window.concluirPedidoBoleto()" class="text-gray-500 hover:text-white underline text-sm transition-colors">Concluir e Voltar para a Loja</button>
                 </div>
             </div>
 
             <div id="boxSucesso" class="hidden flex-col items-center gap-4 w-full py-8">
-                <span class="material-symbols-outlined text-7xl text-green-500 mb-4 animate-bounce">task_alt</span>
-                <h2 class="text-3xl font-bold text-white font-logo">Pagamento Aprovado!</h2>
-                <p class="text-sm text-gray-400 mb-8">O seu pedido <b id="numeroPedidoSucesso" class="text-white bg-gray-800 px-2 py-1 rounded"></b> foi confirmado e já enviamos para a separação.</p>
-                <a href="site.html" class="w-full max-w-sm bg-green-600 text-white px-6 py-4 rounded font-bold uppercase tracking-widest hover:bg-green-500 transition-colors block text-center shadow-lg shadow-green-900/20">Voltar à Página Inicial</a>
+                <span id="iconeSucesso" class="material-symbols-outlined text-7xl mb-4 animate-bounce">task_alt</span>
+                <h2 id="tituloSucesso" class="text-3xl font-bold text-white font-logo">...</h2>
+                <p id="descSucesso" class="text-sm text-gray-400 mb-8 leading-relaxed max-w-md mx-auto"></p>
+                
+                <a href="minhas-compras.html" class="w-full max-w-sm bg-green-600 text-white px-6 py-4 rounded font-bold uppercase tracking-widest hover:bg-green-500 transition-colors block text-center shadow-lg shadow-green-900/20">Ver Meus Pedidos</a>
             </div>
         </div>
 
@@ -246,7 +246,9 @@
     <script type="module">
         import { inicializarLayout } from './layout.js';
         inicializarLayout(); 
+        setTimeout(() => {
+            import('./compra-logic.js').catch(e => console.error("Falha ao carregar motor de compras", e));
+        }, 150);
     </script>
-    <script type="module" src="compra-logic.js"></script>
 </body>
 </html>

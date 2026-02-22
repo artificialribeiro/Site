@@ -25,7 +25,7 @@ let totalGeral = 0;
 let pollingInterval = null;
 
 // ==========================================
-// 1. INICIALIZAÇÃO INFALÍVEL
+// 1. INICIALIZAÇÃO
 // ==========================================
 function bootApp() {
     if (document.readyState === 'loading') {
@@ -261,14 +261,13 @@ if(btnPagar) {
                 throw new Error(resultadoPagamento?.error || "Transação rejeitada.");
             }
 
-            // --- PÓS-PAGAMENTO ---
             if (metodo === 'pix' || metodo === 'boleto') {
                 await finalizarPedidoNoBackEnd('aguardando', resultadoPagamento.paymentId);
                 salvarTransacaoPendente({ metodo, payload: resultadoPagamento });
                 recuperarTransacaoPendente({ metodo, payload: resultadoPagamento });
             } else {
                 await finalizarPedidoNoBackEnd('aprovado', resultadoPagamento.paymentId || 'TX-GIFT');
-                mostrarTelaSucesso();
+                mostrarTelaSucesso('cartao');
             }
 
         } catch (error) {
@@ -291,7 +290,7 @@ async function processarAsaasPix(payloadBase) {
         method: 'POST', headers: getAsaasHeaders(), body: JSON.stringify(payloadBase)
     });
     const data = await res.json();
-    if(!res.ok) throw new Error(data.error || "O Banco Asaas está indisponível neste momento.");
+    if(!res.ok) throw new Error(data.error || "Servidor Asaas Indisponível");
     return data;
 }
 
@@ -314,13 +313,13 @@ async function processarAsaasCartaoCredito(payloadBase) {
     if(!numero || !nome || !validade || !cvv) throw new Error("Preencha todos os dados do cartão.");
 
     const partesValidade = validade.split('/');
-    if(partesValidade.length !== 2) throw new Error("Validade inválida. Use o formato MM/AA");
+    if(partesValidade.length !== 2) throw new Error("Validade inválida. Use formato MM/AA");
     const expiryMonth = partesValidade[0];
     const expiryYear = partesValidade[1].length === 2 ? `20${partesValidade[1]}` : partesValidade[1];
 
     const payloadCartao = {
         ...payloadBase,
-        postalCode: enderecoAtivo.cep.replace(/\D/g, ''), 
+        postalCode: enderecoAtivo.cep.replace(/\D/g, ''),
         addressNumber: enderecoAtivo.numero,
         installments: parseInt(parcelas),
         card: {
@@ -343,7 +342,7 @@ async function processarAsaasCartaoCredito(payloadBase) {
 async function processarGiftCardInterno() {
     const numero = document.getElementById('giftNumero').value;
     const cvv = document.getElementById('giftCvv').value;
-    if(!numero || !cvv) throw new Error("Preencha os dados do Cartão Presente da loja.");
+    if(!numero || !cvv) throw new Error("Preencha os dados do Cartão Presente.");
 
     const headers = await getAuthHeaders();
     const res = await fetch(`${API_CONFIG.baseUrl}/api/cartoes/resgatar`, {
@@ -358,7 +357,7 @@ async function processarGiftCardInterno() {
 }
 
 // ==========================================
-// 5. O COFRE DO PIX / BOLETO (Correção Imagem Base64)
+// 5. O COFRE DO PIX / BOLETO
 // ==========================================
 function salvarTransacaoPendente(dados) {
     localStorage.setItem('boutique_pending_tx', JSON.stringify(dados));
@@ -380,7 +379,6 @@ function recuperarTransacaoPendente(tx) {
             boxPix.classList.add('flex');
         }
         
-        // CORREÇÃO: Garante que a tag <img> entenda que é uma imagem em base64
         let qrSrc = tx.payload.pix.qrCodeImage || tx.payload.pix.encodedImage || "";
         if (qrSrc && !qrSrc.startsWith('data:image') && !qrSrc.startsWith('http')) {
             qrSrc = 'data:image/png;base64,' + qrSrc;
@@ -418,18 +416,18 @@ function iniciarMonitoramentoPix(paymentId) {
             if (data.success && data.paid === true) {
                 clearInterval(pollingInterval);
                 await atualizarStatusPedidoInterno('aprovado');
-                mostrarTelaSucesso();
+                mostrarTelaSucesso('pix');
             }
         } catch (e) {}
     }, 5000); 
 }
 
 window.concluirPedidoBoleto = function() {
-    mostrarTelaSucesso();
+    mostrarTelaSucesso('boleto');
 }
 
 // ==========================================
-// 6. INTEGRAÇÃO FINAL COM A SUA API DE ESTOQUE
+// 6. INTEGRAÇÃO FINAL E TELA DE SUCESSO DINÂMICA
 // ==========================================
 async function finalizarPedidoNoBackEnd(statusPagamento, idExternoGateway) {
     try {
@@ -487,7 +485,8 @@ async function atualizarStatusPedidoInterno(novoStatus) {
     } catch (e) {}
 }
 
-function mostrarTelaSucesso() {
+// A TELA DE SUCESSO AGORA É INTELIGENTE E AVISA SOBRE O BOLETO!
+function mostrarTelaSucesso(metodo = 'cartao') {
     localStorage.removeItem('boutique_pending_tx');
     localStorage.removeItem('boutique_dados_checkout');
     
@@ -502,13 +501,39 @@ function mostrarTelaSucesso() {
         transactionState.classList.add('flex');
     }
     
+    // Altera os textos e cores dinamicamente dependendo de como a pessoa pagou
+    const titulo = document.getElementById('tituloSucesso');
+    const desc = document.getElementById('descSucesso');
+    const icone = document.getElementById('iconeSucesso');
+
+    const idSorte = localStorage.getItem('boutique_last_order_id') || Math.floor(Math.random() * 90000 + 10000);
+
+    if (metodo === 'boleto') {
+        if(icone) {
+            icone.innerText = "schedule";
+            icone.classList.replace('text-green-500', 'text-yellow-500');
+        }
+        if(titulo) titulo.innerText = "Pedido Reservado!";
+        if(desc) {
+            desc.innerHTML = `O seu pedido <b class="text-white bg-gray-800 px-2 py-1 rounded">#${idSorte}</b> foi gerado com sucesso.<br><br>
+            <span class="text-yellow-400 block mt-4 border border-yellow-900/50 bg-yellow-900/20 p-4 rounded text-sm text-left">
+                ⚠️ <b>Aviso sobre o Boleto:</b><br>
+                Acompanhe o seu pedido no menu <b>Meus Pedidos</b>.<br>
+                Após efetuar o pagamento, a compensação bancária pode demorar <b>até 48 horas úteis</b> para mudar o status para "Pago".
+            </span>`;
+        }
+    } else {
+        if(icone) {
+            icone.innerText = "task_alt";
+            icone.classList.replace('text-yellow-500', 'text-green-500');
+        }
+        if(titulo) titulo.innerText = "Pagamento Aprovado!";
+        if(desc) desc.innerHTML = `O seu pedido <b class="text-white bg-gray-800 px-2 py-1 rounded">#${idSorte}</b> foi confirmado e já enviamos para a separação.`;
+    }
+
     const bSucesso = document.getElementById('boxSucesso');
     if(bSucesso) {
         bSucesso.classList.remove('hidden');
         bSucesso.classList.add('flex');
     }
-    
-    const idSorte = localStorage.getItem('boutique_last_order_id') || Math.floor(Math.random() * 90000 + 10000);
-    const labelPedido = document.getElementById('numeroPedidoSucesso');
-    if(labelPedido) labelPedido.innerText = "#" + idSorte;
 }
