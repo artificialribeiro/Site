@@ -13,9 +13,9 @@ let formaSelecionada = null;
 let pollingPix = null;
 
 // ==========================================
-// 1. INICIALIZAÇÃO IMEDIATA E SEGURA
+// 1. INICIALIZAÇÃO E BUSCA INTELIGENTE
 // ==========================================
-carregarHistorico(); // Arranca logo que o script é lido pelo telemóvel
+carregarHistorico(); 
 
 async function carregarHistorico() {
     const sessaoStr = localStorage.getItem('boutique_diniz_session');
@@ -25,21 +25,35 @@ async function carregarHistorico() {
     }
 
     try {
-        clienteLogado = JSON.parse(atob(sessaoStr)).usuario;
+        const sessao = JSON.parse(atob(sessaoStr));
+        
+        // EXTRATOR UNIVERSAL DE ID (Não importa como a API salvou o login, ele acha o ID)
+        clienteLogado = sessao.usuario || sessao.cliente || sessao;
+        const clienteId = clienteLogado.id || clienteLogado.cliente_id || sessao.id;
+
+        if (!clienteId) throw new Error("ID do cliente não encontrado na sessão.");
         
         const headers = await getAuthHeaders();
         
-        // Chamada Oficial na API
-        const res = await fetch(`${API_CONFIG.baseUrl}/api/pedidos?cliente_id=${clienteLogado.id}`, { headers });
+        // Chamada Exata conforme Documentação da API V3
+        const url = `${API_CONFIG.baseUrl}/api/pedidos?cliente_id=${clienteId}`;
+        const res = await fetch(url, { headers });
         
         if (!res.ok) throw new Error("A API rejeitou a conexão.");
         
         const data = await res.json();
-        const pedidos = Array.isArray(data) ? data : (data.data || []);
+        
+        // Extrator Universal de Array de Pedidos
+        let pedidos = [];
+        if (Array.isArray(data)) pedidos = data;
+        else if (data && Array.isArray(data.data)) pedidos = data.data;
+        else if (data && data.data && Array.isArray(data.data.pedidos)) pedidos = data.data.pedidos;
 
         if (pedidos.length === 0) {
             if(loadingState) loadingState.classList.add('hidden');
             if(emptyState) {
+                const pInfo = emptyState.querySelector('p');
+                if(pInfo) pInfo.innerText = `Nenhum pedido localizado para o cliente #${clienteId}.`;
                 emptyState.classList.remove('hidden');
                 emptyState.classList.add('flex');
             }
@@ -53,8 +67,8 @@ async function carregarHistorico() {
         if(loadingState) {
             loadingState.innerHTML = `
                 <span class="material-symbols-outlined text-5xl text-red-500 mb-2">error</span>
-                <h3 class="text-xl font-bold text-white text-center">Ops, falha de comunicação</h3>
-                <p class="text-sm text-gray-400 text-center max-w-sm mt-2">Não foi possível carregar os seus pedidos. Verifique se o servidor está online.</p>
+                <h3 class="text-xl font-bold text-white text-center">Falha de comunicação</h3>
+                <p class="text-sm text-gray-400 text-center max-w-sm mt-2">${error.message}</p>
                 <button onclick="window.location.reload()" class="mt-6 bg-white text-black font-bold uppercase tracking-widest text-xs px-8 py-3 rounded hover:bg-gray-200 transition-colors">Tentar Novamente</button>
             `;
         }
@@ -159,7 +173,7 @@ function renderizarPedidos(pedidos) {
 // 3. CANCELAMENTO COM DEVOLUÇÃO DE ESTOQUE
 // ==========================================
 window.cancelarPedido = async function(pedidoId) {
-    if (!confirm("Tem a certeza que deseja cancelar esta compra? Os itens serão devolvidos ao estoque.")) return;
+    if (!confirm("Tem certeza que deseja cancelar esta compra? Os itens retornarão ao estoque.")) return;
 
     try {
         const headers = await getAuthHeaders();
