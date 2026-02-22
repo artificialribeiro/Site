@@ -28,27 +28,24 @@
 </head>
 <body class="bg-[#000000] text-white min-h-screen flex flex-col antialiased">
 
-    <header class="w-full border-b border-gray-900 bg-[#0a0a0a] py-4 sticky top-0 z-50 shadow-md">
-        <div class="max-w-4xl mx-auto px-4 flex justify-between items-center">
-            <h1 class="font-logo text-2xl text-white">Boutique Diniz</h1>
-            <div class="flex items-center gap-2 text-green-500 text-xs font-bold uppercase tracking-widest bg-green-900/20 px-3 py-1 rounded-full border border-green-900/30">
-                <span class="material-symbols-outlined text-[16px]">lock</span> Ambiente Seguro
-            </div>
-        </div>
-    </header>
+    <div id="app-header"></div>
 
     <main class="flex-grow pt-8 pb-16 max-w-4xl mx-auto w-full px-4">
         
         <div id="loadingState" class="flex items-center justify-center py-20 flex-col gap-4">
             <span class="material-symbols-outlined animate-spin text-4xl text-gray-500">sync</span>
-            <p class="text-xs uppercase tracking-widest text-gray-500">A preparar o seu pedido...</p>
+            <p class="text-xs uppercase tracking-widest text-gray-500">Preparando o seu pedido...</p>
         </div>
 
         <div id="checkoutForm" class="hidden flex-col gap-6">
             
+            <div class="flex items-center gap-2 text-green-500 text-xs font-bold uppercase tracking-widest bg-green-900/20 px-4 py-2 rounded-full border border-green-900/30 w-max mx-auto mb-4">
+                <span class="material-symbols-outlined text-[16px]">lock</span> Finalização Segura
+            </div>
+
             <section class="bg-[#050505] border border-gray-900 rounded-lg p-6 shadow-lg">
                 <h2 class="text-sm uppercase tracking-widest text-gray-400 mb-4 flex items-center gap-2 border-b border-gray-900 pb-2">
-                    <span class="material-symbols-outlined text-[18px]">shopping_bag</span> 1. Os seus Looks
+                    <span class="material-symbols-outlined text-[18px]">shopping_bag</span> 1. Seus Looks
                 </h2>
                 <div id="listaItensCompra" class="flex flex-col gap-3 max-h-[300px] overflow-y-auto custom-scroll pr-2">
                     </div>
@@ -66,7 +63,7 @@
                             <div class="radio-dot w-4 h-4 rounded-full border-2 border-gray-600 transition-colors flex-shrink-0"></div>
                             <div>
                                 <h3 class="font-bold text-sm">Receber em Casa</h3>
-                                <p class="text-xs text-gray-500 mt-1" id="txtEnderecoDestino">A carregar...</p>
+                                <p class="text-xs text-gray-500 mt-1" id="txtEnderecoDestino">Carregando endereço...</p>
                             </div>
                         </div>
                     </label>
@@ -92,9 +89,15 @@
             </section>
 
             <section class="bg-[#050505] border border-gray-900 rounded-lg p-6 shadow-lg">
-                <h2 class="text-sm uppercase tracking-widest text-gray-400 mb-6 flex items-center gap-2 border-b border-gray-900 pb-2">
+                <h2 class="text-sm uppercase tracking-widest text-gray-400 mb-4 flex items-center gap-2 border-b border-gray-900 pb-2">
                     <span class="material-symbols-outlined text-[18px]">payments</span> 3. Pagamento
                 </h2>
+
+                <div class="mb-6 bg-[#0a0a0a] p-4 rounded border border-gray-800">
+                    <label class="block text-[10px] uppercase tracking-widest text-gray-500 mb-1">CPF do Comprador *</label>
+                    <input type="text" id="cpfComprador" required class="w-full bg-[#111] border border-gray-800 rounded px-3 py-3 text-sm text-white outline-none focus:border-green-500 transition-colors" placeholder="000.000.000-00">
+                    <p class="text-[10px] text-gray-600 mt-1">Exigência do Banco Central para emissão de cobranças e notas fiscais.</p>
+                </div>
 
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
                     <label class="cursor-pointer">
@@ -202,19 +205,16 @@
             <div id="boxPix" class="hidden flex-col items-center gap-5 w-full">
                 <h2 class="text-2xl font-bold text-green-400 font-logo">Quase lá! Escaneie o QR Code.</h2>
                 <p class="text-sm text-gray-400 mb-2">Você tem 15 minutos para pagar. A tela vai atualizar automaticamente.</p>
-                
                 <div class="bg-white p-3 rounded-xl shadow-lg">
                     <img id="qrCodePix" src="" alt="QR Code PIX" class="w-56 h-56 object-contain">
                 </div>
-                
                 <div class="w-full max-w-md mt-4">
                     <label class="block text-[10px] uppercase tracking-widest text-gray-500 mb-2 text-left">Ou utilize o código Copia e Cola:</label>
                     <div class="flex shadow-lg">
                         <input type="text" id="copiaColaPix" readonly class="w-full bg-[#111] border border-gray-700 rounded-l px-4 py-3 text-xs text-gray-300 outline-none font-mono selection:bg-green-900">
-                        <button onclick="copiarPix()" class="bg-green-700 text-white font-bold px-6 rounded-r hover:bg-green-600 transition-colors uppercase tracking-widest text-xs">Copiar</button>
+                        <button onclick="window.copiarPix()" class="bg-green-700 text-white font-bold px-6 rounded-r hover:bg-green-600 transition-colors uppercase tracking-widest text-xs">Copiar</button>
                     </div>
                 </div>
-
                 <div class="flex items-center gap-2 mt-6 text-sm text-yellow-500 bg-yellow-900/20 px-6 py-3 rounded-full border border-yellow-700/30">
                     <span class="material-symbols-outlined text-[18px] animate-spin">sync</span> Aguardando identificação do banco...
                 </div>
@@ -223,26 +223,30 @@
             <div id="boxBoleto" class="hidden flex-col items-center gap-5 w-full">
                 <h2 class="text-2xl font-bold text-green-400 font-logo">Boleto Gerado!</h2>
                 <p class="text-sm text-gray-400 mb-6">O seu pedido foi reservado com sucesso no estoque. O pagamento pode levar até 2 dias úteis para compensar.</p>
-                
                 <a id="linkBoleto" href="#" target="_blank" class="bg-white text-black px-8 py-4 rounded font-bold uppercase tracking-widest hover:bg-gray-200 transition-colors shadow-lg">
                     Imprimir / Ver Boleto
                 </a>
-                
                 <div class="mt-10 pt-8 border-t border-gray-900 w-full">
-                    <button onclick="concluirPedidoBoleto()" class="text-gray-500 hover:text-white underline text-sm transition-colors">Voltar para a Loja</button>
+                    <button onclick="window.concluirPedidoBoleto()" class="text-gray-500 hover:text-white underline text-sm transition-colors">Voltar para a Loja</button>
                 </div>
             </div>
 
             <div id="boxSucesso" class="hidden flex-col items-center gap-4 w-full py-8">
                 <span class="material-symbols-outlined text-7xl text-green-500 mb-4 animate-bounce">task_alt</span>
                 <h2 class="text-3xl font-bold text-white font-logo">Pagamento Aprovado!</h2>
-                <p class="text-sm text-gray-400 mb-8">O seu pedido <b id="numeroPedidoSucesso" class="text-white bg-gray-800 px-2 py-1 rounded"></b> foi confirmado e já enviámos para a separação.</p>
-                <a href="minhas-compras.html" class="w-full max-w-sm bg-green-600 text-white px-6 py-4 rounded font-bold uppercase tracking-widest hover:bg-green-500 transition-colors block text-center shadow-lg shadow-green-900/20">Ver Meus Pedidos</a>
+                <p class="text-sm text-gray-400 mb-8">O seu pedido <b id="numeroPedidoSucesso" class="text-white bg-gray-800 px-2 py-1 rounded"></b> foi confirmado e já enviamos para a separação.</p>
+                <a href="site.html" class="w-full max-w-sm bg-green-600 text-white px-6 py-4 rounded font-bold uppercase tracking-widest hover:bg-green-500 transition-colors block text-center shadow-lg shadow-green-900/20">Voltar à Página Inicial</a>
             </div>
         </div>
 
     </main>
 
+    <div id="app-footer"></div>
+
+    <script type="module">
+        import { inicializarLayout } from './layout.js';
+        inicializarLayout(); 
+    </script>
     <script type="module" src="compra-logic.js"></script>
 </body>
 </html>

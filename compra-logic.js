@@ -1,10 +1,8 @@
 import { getAuthHeaders, API_CONFIG } from './chavetoken.js';
 
-// --- CONFIGURAÇÃO DO GATEWAY ASAAS E CHAVE DE ADMINISTRAÇÃO ---
 const ASAAS_API_BASE = "https://round-union-6fef.vitortullijoao.workers.dev";
-const ASAAS_SECURITY_KEY = "1526105"; [span_1](start_span)// Chave EXATA conforme Documentação API[span_1](end_span)
+const ASAAS_SECURITY_KEY = "1526105"; 
 
-// --- ELEMENTOS DOM ---
 const loadingState = document.getElementById('loadingState');
 const checkoutForm = document.getElementById('checkoutForm');
 const transactionState = document.getElementById('transactionState');
@@ -17,8 +15,8 @@ const resumoFrete = document.getElementById('resumoFrete');
 const resumoTotal = document.getElementById('resumoTotal');
 const qtdItens = document.getElementById('qtdItens');
 const btnPagar = document.getElementById('btnPagar');
+const cpfCompradorInput = document.getElementById('cpfComprador');
 
-// --- ESTADO GLOBAL DA COMPRA ---
 let cliente = null;
 let enderecoAtivo = null;
 let dadosCarrinho = null;
@@ -27,50 +25,76 @@ let totalGeral = 0;
 let pollingInterval = null;
 
 // ==========================================
-// 1. INICIALIZAÇÃO IMEDIATA (Sem travas de carregamento)
+// 1. INICIALIZAÇÃO INFALÍVEL
 // ==========================================
-iniciarCheckout();
+function bootApp() {
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', iniciarCheckout);
+    } else {
+        iniciarCheckout();
+    }
+}
+bootApp();
+
+function mostrarErroFatal(mensagem) {
+    if (loadingState) {
+        loadingState.innerHTML = `
+            <span class="material-symbols-outlined text-5xl text-red-500 mb-2">error</span>
+            <h3 class="text-xl font-bold text-white text-center">Ops, falha na verificação!</h3>
+            <p class="text-sm text-gray-400 text-center max-w-sm mt-2">${mensagem}</p>
+            <button onclick="window.location.href='carrinho.html'" class="mt-6 bg-white text-black font-bold uppercase tracking-widest text-xs px-8 py-3 rounded hover:bg-gray-200 transition-colors">Voltar ao Carrinho</button>
+        `;
+    }
+}
 
 async function iniciarCheckout() {
-    // A. Retorno do App do Banco (Evita que o PIX se perca)
-    const transacaoPendente = localStorage.getItem('boutique_pending_tx');
-    if (transacaoPendente) {
-        const txData = JSON.parse(transacaoPendente);
-        
-        const sessaoStr = localStorage.getItem('boutique_diniz_session');
-        if(sessaoStr) cliente = JSON.parse(atob(sessaoStr)).usuario;
-        
-        const carrinhoStr = localStorage.getItem('boutique_dados_checkout');
-        if(carrinhoStr) dadosCarrinho = JSON.parse(carrinhoStr);
-        
-        recuperarTransacaoPendente(txData);
-        return;
-    }
-
-    // B. Fluxo Normal de Compra
-    const sessaoStr = localStorage.getItem('boutique_diniz_session');
-    const carrinhoStr = localStorage.getItem('boutique_dados_checkout');
-
-    if (!sessaoStr || !carrinhoStr) {
-        window.location.href = 'carrinho.html';
-        return;
-    }
-
     try {
+        const transacaoPendente = localStorage.getItem('boutique_pending_tx');
+        if (transacaoPendente) {
+            const txData = JSON.parse(transacaoPendente);
+            const sessaoStr = localStorage.getItem('boutique_diniz_session');
+            if(sessaoStr) cliente = JSON.parse(atob(sessaoStr)).usuario;
+            recuperarTransacaoPendente(txData);
+            return;
+        }
+
+        const sessaoStr = localStorage.getItem('boutique_diniz_session');
+        const carrinhoStr = localStorage.getItem('boutique_dados_checkout');
+
+        if (!sessaoStr || !carrinhoStr) {
+            mostrarErroFatal("Não conseguimos ler os dados do seu carrinho. Pode ter expirado.");
+            return;
+        }
+
         const sessao = JSON.parse(atob(sessaoStr));
         dadosCarrinho = JSON.parse(carrinhoStr);
         cliente = sessao.usuario;
         
+        if(cpfCompradorInput && cliente.cpf) {
+            cpfCompradorInput.value = cliente.cpf;
+        }
+        
         renderizarItensDoPedido();
         await buscarEnderecoEcalcularFrete();
+
     } catch (e) {
-        console.error("Erro na inicialização:", e);
-        window.location.href = 'carrinho.html';
+        console.error(e);
+        mostrarErroFatal("Erro interno de comunicação. Verifique a sua conexão de rede.");
     }
 }
 
+if(cpfCompradorInput) {
+    cpfCompradorInput.addEventListener('input', function (e) {
+        let v = e.target.value.replace(/\D/g,"");
+        v = v.replace(/(\d{3})(\d)/,"$1.$2");
+        v = v.replace(/(\d{3})(\d)/,"$1.$2");
+        v = v.replace(/(\d{3})(\d{1,2})$/,"$1-$2");
+        e.target.value = v;
+    });
+}
+
 // ==========================================
-// 2. RENDERIZAR OS ITENS (Visualização)
+// 2. RENDERIZAÇÃO DA VITRINE
 // ==========================================
 function resolverImagem(caminho) {
     if (!caminho) return 'https://via.placeholder.com/100/111/fff?text=Sem+Foto';
@@ -80,7 +104,10 @@ function resolverImagem(caminho) {
 }
 
 function renderizarItensDoPedido() {
-    if (!dadosCarrinho || !dadosCarrinho.itens) return;
+    if (!dadosCarrinho || !dadosCarrinho.itens || dadosCarrinho.itens.length === 0) {
+        mostrarErroFatal("O seu carrinho parece estar vazio.");
+        return;
+    }
 
     let htmlItens = '';
     dadosCarrinho.itens.forEach(item => {
@@ -113,43 +140,40 @@ function renderizarItensDoPedido() {
             </div>
         `;
     });
-    listaItensCompra.innerHTML = htmlItens;
+    if(listaItensCompra) listaItensCompra.innerHTML = htmlItens;
 }
 
 // ==========================================
-// 3. LÓGICA DE FRETE E ENDEREÇO
+// 3. BUSCA DE ENDEREÇO E FRETE
 // ==========================================
 async function buscarEnderecoEcalcularFrete() {
-    try {
-        const headers = await getAuthHeaders();
-        const res = await fetch(`${API_CONFIG.baseUrl}/api/clientes/${cliente.id}/enderecos`, { headers });
-        
-        if (!res.ok) throw new Error("Erro na API");
-        const dados = await res.json();
-        
-        let enderecos = [];
-        if (Array.isArray(dados)) enderecos = dados;
-        else if (dados.data) enderecos = Array.isArray(dados.data) ? dados.data : [dados.data];
+    const headers = await getAuthHeaders();
+    const res = await fetch(`${API_CONFIG.baseUrl}/api/clientes/${cliente.id}/enderecos`, { headers });
+    
+    if (!res.ok) throw new Error("Erro na API de endereços.");
 
-        enderecoAtivo = enderecos.find(e => e.principal) || enderecos[0];
+    const dados = await res.json();
+    let enderecos = [];
+    if (Array.isArray(dados)) enderecos = dados;
+    else if (dados.data) enderecos = Array.isArray(dados.data) ? dados.data : [dados.data];
 
-        if (enderecoAtivo) {
-            txtEnderecoDestino.innerText = `${enderecoAtivo.rua}, ${enderecoAtivo.numero} - ${enderecoAtivo.cidade}/${enderecoAtivo.estado}`;
-        } else {
-            alert("Erro: Morada não localizada. Por favor, volte ao carrinho.");
-            window.location.href = 'carrinho.html';
-            return;
-        }
+    enderecoAtivo = enderecos.find(e => e.principal) || enderecos[0];
 
-        window.calcularFrete(); 
+    if (!enderecoAtivo) {
+        mostrarErroFatal("Você precisa salvar o seu endereço no carrinho antes de pagar.");
+        return;
+    }
 
-        loadingState.classList.add('hidden');
+    if (txtEnderecoDestino) {
+        txtEnderecoDestino.innerText = `${enderecoAtivo.rua}, ${enderecoAtivo.numero} - ${enderecoAtivo.cidade}/${enderecoAtivo.estado}`;
+    }
+    
+    window.calcularFrete(); 
+
+    if (loadingState) loadingState.classList.add('hidden');
+    if (checkoutForm) {
         checkoutForm.classList.remove('hidden');
         checkoutForm.classList.add('flex');
-
-    } catch (error) {
-        alert("Falha ao comunicar com a base de moradas.");
-        window.location.href = 'carrinho.html';
     }
 }
 
@@ -158,7 +182,7 @@ window.calcularFrete = function() {
     
     if (tipo === 'retirada') {
         valorFrete = 0;
-        valorFreteUI.innerText = "Grátis";
+        if(valorFreteUI) valorFreteUI.innerText = "Grátis";
     } else {
         if (enderecoAtivo.cidade.toLowerCase().includes('cachoeiro de itapemirim')) {
             valorFrete = 35.00;
@@ -166,87 +190,99 @@ window.calcularFrete = function() {
             const fretesBase = { 'ES': 25, 'RJ': 30, 'SP': 35, 'MG': 40 };
             valorFrete = fretesBase[enderecoAtivo.estado] || 65.00;
         }
-        valorFreteUI.innerText = `R$ ${valorFrete.toFixed(2).replace('.', ',')} (Sedex)`;
+        if(valorFreteUI) valorFreteUI.innerText = `R$ ${valorFrete.toFixed(2).replace('.', ',')} (Sedex)`;
     }
     atualizarResumoValores();
 }
 
 function atualizarResumoValores() {
-    qtdItens.innerText = dadosCarrinho.itens.reduce((acc, item) => acc + (item.quantidade || 1), 0);
-    resumoSubtotal.innerText = `R$ ${dadosCarrinho.subtotal.toFixed(2).replace('.', ',')}`;
-    resumoFrete.innerText = valorFrete === 0 ? 'Grátis' : `R$ ${valorFrete.toFixed(2).replace('.', ',')}`;
+    if(qtdItens) qtdItens.innerText = dadosCarrinho.itens.reduce((acc, item) => acc + (item.quantidade || 1), 0);
+    if(resumoSubtotal) resumoSubtotal.innerText = `R$ ${dadosCarrinho.subtotal.toFixed(2).replace('.', ',')}`;
+    if(resumoFrete) resumoFrete.innerText = valorFrete === 0 ? 'Grátis' : `R$ ${valorFrete.toFixed(2).replace('.', ',')}`;
     
     totalGeral = dadosCarrinho.subtotal + valorFrete;
-    resumoTotal.innerText = `R$ ${totalGeral.toFixed(2).replace('.', ',')}`;
+    if(resumoTotal) resumoTotal.innerText = `R$ ${totalGeral.toFixed(2).replace('.', ',')}`;
 }
 
 window.alternarFormularioPagamento = function() {
     const metodo = document.querySelector('input[name="metodo_pagamento"]:checked').value;
     
-    document.getElementById('formCartao').classList.add('hidden');
-    document.getElementById('formGiftCard').classList.add('hidden');
+    const fCartao = document.getElementById('formCartao');
+    const fGift = document.getElementById('formGiftCard');
 
-    if (metodo === 'credit') {
-        document.getElementById('formCartao').classList.remove('hidden');
-        document.getElementById('formCartao').classList.add('flex');
-    } else if (metodo === 'giftcard') {
-        document.getElementById('formGiftCard').classList.remove('hidden');
-        document.getElementById('formGiftCard').classList.add('flex');
+    if(fCartao) fCartao.classList.add('hidden');
+    if(fGift) fGift.classList.add('hidden');
+
+    if (metodo === 'credit' && fCartao) {
+        fCartao.classList.remove('hidden');
+        fCartao.classList.add('flex');
+    } else if (metodo === 'giftcard' && fGift) {
+        fGift.classList.remove('hidden');
+        fGift.classList.add('flex');
     }
 }
 
 // ==========================================
-// 4. MOTOR DO GATEWAY ASAAS & INTERNAL API
+// 4. MÁQUINA DE PAGAMENTO ASAAS
 // ==========================================
-btnPagar.addEventListener('click', async () => {
-    const metodo = document.querySelector('input[name="metodo_pagamento"]:checked').value;
-    
-    btnPagar.innerHTML = `<span class="material-symbols-outlined animate-spin">sync</span> Validando com o Banco...`;
-    btnPagar.disabled = true;
-
-    try {
-        let resultadoPagamento = null;
-
-        const payloadBaseAsaas = {
-            [span_2](start_span)amount: parseFloat(totalGeral.toFixed(2)), // Envio obrigatório como 'amount'[span_2](end_span)
-            name: cliente.nome_completo || cliente.nome || "Cliente Boutique Diniz",
-            cpf: cliente.cpf,
-            email: cliente.email || 'cliente@boutiquediniz.com',
-            description: `Boutique Diniz - Pedido de ${cliente.nome_completo || cliente.nome}`
-        };
-
-        if (metodo === 'pix') resultadoPagamento = await processarAsaasPix(payloadBaseAsaas);
-        else if (metodo === 'boleto') resultadoPagamento = await processarAsaasBoleto(payloadBaseAsaas);
-        else if (metodo === 'credit') resultadoPagamento = await processarAsaasCartaoCredito(payloadBaseAsaas);
-        else if (metodo === 'giftcard') resultadoPagamento = await processarGiftCardInterno();
-
-        if (!resultadoPagamento.success) {
-            throw new Error(resultadoPagamento.error || "Transação não autorizada pela operadora.");
+if(btnPagar) {
+    btnPagar.addEventListener('click', async () => {
+        const metodo = document.querySelector('input[name="metodo_pagamento"]:checked').value;
+        
+        const cpfRaw = cpfCompradorInput ? cpfCompradorInput.value : '';
+        const cpfLimpo = cpfRaw.replace(/\D/g, '');
+        
+        if (!cpfLimpo || cpfLimpo.length !== 11) {
+            alert("Por favor, preencha um CPF válido (11 dígitos).");
+            if(cpfCompradorInput) cpfCompradorInput.focus();
+            return;
         }
 
-        // --- PÓS-PAGAMENTO ---
-        if (metodo === 'pix' || metodo === 'boleto') {
-            await finalizarPedidoNoBackEnd('aguardando', resultadoPagamento.paymentId);
-            salvarTransacaoPendente({ metodo, payload: resultadoPagamento });
-            recuperarTransacaoPendente({ metodo, payload: resultadoPagamento });
-        } else {
-            await finalizarPedidoNoBackEnd('aprovado', resultadoPagamento.paymentId || 'TX-GIFT');
-            mostrarTelaSucesso();
+        btnPagar.innerHTML = `<span class="material-symbols-outlined animate-spin">sync</span> Validando com o Banco...`;
+        btnPagar.disabled = true;
+
+        try {
+            let resultadoPagamento = null;
+
+            const payloadBaseAsaas = {
+                amount: parseFloat(totalGeral.toFixed(2)), 
+                name: cliente.nome_completo || cliente.nome || "Cliente Boutique Diniz",
+                cpf: cpfLimpo, 
+                email: cliente.email || 'cliente@boutiquediniz.com',
+                description: `Boutique Diniz - Pedido de Roupas`
+            };
+
+            if (metodo === 'pix') resultadoPagamento = await processarAsaasPix(payloadBaseAsaas);
+            else if (metodo === 'boleto') resultadoPagamento = await processarAsaasBoleto(payloadBaseAsaas);
+            else if (metodo === 'credit') resultadoPagamento = await processarAsaasCartaoCredito(payloadBaseAsaas);
+            else if (metodo === 'giftcard') resultadoPagamento = await processarGiftCardInterno();
+
+            if (!resultadoPagamento || !resultadoPagamento.success) {
+                throw new Error(resultadoPagamento?.error || "Transação rejeitada.");
+            }
+
+            // --- PÓS-PAGAMENTO ---
+            if (metodo === 'pix' || metodo === 'boleto') {
+                await finalizarPedidoNoBackEnd('aguardando', resultadoPagamento.paymentId);
+                salvarTransacaoPendente({ metodo, payload: resultadoPagamento });
+                recuperarTransacaoPendente({ metodo, payload: resultadoPagamento });
+            } else {
+                await finalizarPedidoNoBackEnd('aprovado', resultadoPagamento.paymentId || 'TX-GIFT');
+                mostrarTelaSucesso();
+            }
+
+        } catch (error) {
+            alert(`Aviso do Banco:\n${error.message}`);
+            btnPagar.innerHTML = `<span class="material-symbols-outlined">lock</span> Finalizar Pagamento`;
+            btnPagar.disabled = false;
         }
-
-    } catch (error) {
-        alert(`Pagamento Recusado:\n${error.message}`);
-        btnPagar.innerHTML = `<span class="material-symbols-outlined">lock</span> Finalizar Pagamento`;
-        btnPagar.disabled = false;
-    }
-});
-
-// --- COMUNICAÇÕES COM WORKER DO ASAAS (Com a chave de segurança 1526105) ---
+    });
+}
 
 function getAsaasHeaders() {
     return {
         'Content-Type': 'application/json',
-        [span_3](start_span)'X-Security-Key': ASAAS_SECURITY_KEY // A injeção da chave exata exigida[span_3](end_span)
+        'X-Security-Key': ASAAS_SECURITY_KEY 
     };
 }
 
@@ -255,7 +291,7 @@ async function processarAsaasPix(payloadBase) {
         method: 'POST', headers: getAsaasHeaders(), body: JSON.stringify(payloadBase)
     });
     const data = await res.json();
-    if(!res.ok) throw new Error(data.error || "Servidor do Banco Indisponível (500)");
+    if(!res.ok) throw new Error(data.error || "O Banco Asaas está indisponível neste momento.");
     return data;
 }
 
@@ -264,7 +300,7 @@ async function processarAsaasBoleto(payloadBase) {
         method: 'POST', headers: getAsaasHeaders(), body: JSON.stringify(payloadBase)
     });
     const data = await res.json();
-    if(!res.ok) throw new Error(data.error || "Erro ao gerar boleto.");
+    if(!res.ok) throw new Error(data.error || "Erro ao gerar o seu boleto.");
     return data;
 }
 
@@ -278,13 +314,13 @@ async function processarAsaasCartaoCredito(payloadBase) {
     if(!numero || !nome || !validade || !cvv) throw new Error("Preencha todos os dados do cartão.");
 
     const partesValidade = validade.split('/');
-    if(partesValidade.length !== 2) throw new Error("Validade inválida. Use MM/AA");
+    if(partesValidade.length !== 2) throw new Error("Validade inválida. Use o formato MM/AA");
     const expiryMonth = partesValidade[0];
     const expiryYear = partesValidade[1].length === 2 ? `20${partesValidade[1]}` : partesValidade[1];
 
     const payloadCartao = {
         ...payloadBase,
-        [span_4](start_span)postalCode: enderecoAtivo.cep.replace(/\D/g, ''), // Formato exigido para cartão[span_4](end_span)
+        postalCode: enderecoAtivo.cep.replace(/\D/g, ''), 
         addressNumber: enderecoAtivo.numero,
         installments: parseInt(parcelas),
         card: {
@@ -300,14 +336,14 @@ async function processarAsaasCartaoCredito(payloadBase) {
         method: 'POST', headers: getAsaasHeaders(), body: JSON.stringify(payloadCartao)
     });
     const data = await res.json();
-    if(!res.ok) throw new Error(data.error || "Cartão Recusado.");
+    if(!res.ok) throw new Error(data.error || "O Cartão de Crédito foi recusado pela operadora.");
     return data;
 }
 
 async function processarGiftCardInterno() {
     const numero = document.getElementById('giftNumero').value;
     const cvv = document.getElementById('giftCvv').value;
-    if(!numero || !cvv) throw new Error("Preencha os dados do Cartão Presente.");
+    if(!numero || !cvv) throw new Error("Preencha os dados do Cartão Presente da loja.");
 
     const headers = await getAuthHeaders();
     const res = await fetch(`${API_CONFIG.baseUrl}/api/cartoes/resgatar`, {
@@ -318,11 +354,11 @@ async function processarGiftCardInterno() {
 
     const data = await res.json();
     if(res.ok && data.success) return { success: true, paymentId: `GIFT-${data.data.id}` };
-    else throw new Error(data.message || "Saldo insuficiente ou cartão inválido.");
+    else throw new Error(data.message || "Saldo insuficiente no cartão presente.");
 }
 
 // ==========================================
-// 5. RESILIÊNCIA E COFRE LOCAL (PIX/BOLETO)
+// 5. O COFRE DO PIX / BOLETO (Correção Imagem Base64)
 // ==========================================
 function salvarTransacaoPendente(dados) {
     localStorage.setItem('boutique_pending_tx', JSON.stringify(dados));
@@ -330,23 +366,36 @@ function salvarTransacaoPendente(dados) {
 
 function recuperarTransacaoPendente(tx) {
     if(checkoutForm) checkoutForm.classList.add('hidden');
+    if(loadingState) loadingState.classList.add('hidden');
     
-    transactionState.classList.remove('hidden');
-    transactionState.classList.add('flex');
-    loadingState.classList.add('hidden');
+    if(transactionState) {
+        transactionState.classList.remove('hidden');
+        transactionState.classList.add('flex');
+    }
 
     if (tx.metodo === 'pix') {
-        document.getElementById('boxPix').classList.remove('hidden');
-        document.getElementById('boxPix').classList.add('flex');
+        const boxPix = document.getElementById('boxPix');
+        if(boxPix) {
+            boxPix.classList.remove('hidden');
+            boxPix.classList.add('flex');
+        }
         
-        document.getElementById('qrCodePix').src = tx.payload.pix.qrCodeImage;
-        document.getElementById('copiaColaPix').value = tx.payload.pix.copyPaste;
+        // CORREÇÃO: Garante que a tag <img> entenda que é uma imagem em base64
+        let qrSrc = tx.payload.pix.qrCodeImage || tx.payload.pix.encodedImage || "";
+        if (qrSrc && !qrSrc.startsWith('data:image') && !qrSrc.startsWith('http')) {
+            qrSrc = 'data:image/png;base64,' + qrSrc;
+        }
+        
+        document.getElementById('qrCodePix').src = qrSrc;
+        document.getElementById('copiaColaPix').value = tx.payload.pix.copyPaste || tx.payload.pix.payload;
 
         iniciarMonitoramentoPix(tx.payload.paymentId);
-
     } else if (tx.metodo === 'boleto') {
-        document.getElementById('boxBoleto').classList.remove('hidden');
-        document.getElementById('boxBoleto').classList.add('flex');
+        const boxBoleto = document.getElementById('boxBoleto');
+        if(boxBoleto) {
+            boxBoleto.classList.remove('hidden');
+            boxBoleto.classList.add('flex');
+        }
         document.getElementById('linkBoleto').href = tx.payload.boletoUrl;
     }
 }
@@ -355,7 +404,7 @@ window.copiarPix = function() {
     const copyText = document.getElementById("copiaColaPix");
     copyText.select();
     document.execCommand("copy");
-    alert("Código PIX copiado! Cole na aplicação do seu banco.");
+    alert("Código PIX copiado!");
 }
 
 function iniciarMonitoramentoPix(paymentId) {
@@ -380,7 +429,7 @@ window.concluirPedidoBoleto = function() {
 }
 
 // ==========================================
-// 6. GERAÇÃO DO PEDIDO E LIMPEZA
+// 6. INTEGRAÇÃO FINAL COM A SUA API DE ESTOQUE
 // ==========================================
 async function finalizarPedidoNoBackEnd(statusPagamento, idExternoGateway) {
     try {
@@ -414,7 +463,6 @@ async function finalizarPedidoNoBackEnd(statusPagamento, idExternoGateway) {
                 localStorage.setItem('boutique_last_order_id', dataPedido.data.id);
             }
 
-            [span_5](start_span)// O Carrinho é esvaziado permanentemente[span_5](end_span)
             await fetch(`${API_CONFIG.baseUrl}/api/carrinho/${cliente.id}/limpar`, { 
                 method: 'POST', 
                 headers: headersJson 
@@ -422,9 +470,7 @@ async function finalizarPedidoNoBackEnd(statusPagamento, idExternoGateway) {
             
             localStorage.setItem('boutique_cart_qty', '0'); 
         }
-    } catch (e) {
-        console.error("Aviso: Pedido salvo no Asaas, falha na API principal.", e);
-    }
+    } catch (e) {}
 }
 
 async function atualizarStatusPedidoInterno(novoStatus) {
@@ -445,17 +491,24 @@ function mostrarTelaSucesso() {
     localStorage.removeItem('boutique_pending_tx');
     localStorage.removeItem('boutique_dados_checkout');
     
-    document.getElementById('boxPix').classList.add('hidden');
-    document.getElementById('boxBoleto').classList.add('hidden');
+    const bPix = document.getElementById('boxPix');
+    const bBoleto = document.getElementById('boxBoleto');
+    if(bPix) bPix.classList.add('hidden');
+    if(bBoleto) bBoleto.classList.add('hidden');
     
     if(checkoutForm) checkoutForm.classList.add('hidden');
-
-    transactionState.classList.remove('hidden');
-    transactionState.classList.add('flex');
+    if(transactionState) {
+        transactionState.classList.remove('hidden');
+        transactionState.classList.add('flex');
+    }
     
-    document.getElementById('boxSucesso').classList.remove('hidden');
-    document.getElementById('boxSucesso').classList.add('flex');
+    const bSucesso = document.getElementById('boxSucesso');
+    if(bSucesso) {
+        bSucesso.classList.remove('hidden');
+        bSucesso.classList.add('flex');
+    }
     
     const idSorte = localStorage.getItem('boutique_last_order_id') || Math.floor(Math.random() * 90000 + 10000);
-    document.getElementById('numeroPedidoSucesso').innerText = "#" + idSorte;
+    const labelPedido = document.getElementById('numeroPedidoSucesso');
+    if(labelPedido) labelPedido.innerText = "#" + idSorte;
 }
