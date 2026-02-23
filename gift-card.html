@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Gift Card · Boutique Diniz</title>
+<link rel="icon" type="image/png" href="logo.png">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Satisfy&family=Playfair+Display:ital,wght@0,400;0,500;1,400&family=Space+Mono&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,300,0,0" rel="stylesheet">
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{
+  background:#000;
+  color:#fff;
+  font-family:'Montserrat',sans-serif;
+  font-weight:300;
+  min-height:100vh;
+  overflow-x:hidden;
+}
+.logo-font{font-family:'Satisfy',cursive;}
+.serif{font-family:'Playfair Display',serif;}
+.mono{font-family:'Space Mono',monospace;}
+
+/* grain */
+body::after{
+  content:'';position:fixed;inset:0;pointer-events:none;opacity:.02;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  z-index:9999;
+}
+
+.rule{height:1px;background:#1a1a1a;}
+.rule-dim{height:1px;background:rgba(255,255,255,.05);}
+
+/* value buttons */
+.val-btn{
+  border:1px solid #1c1c1c;background:transparent;color:#3a3a3a;
+  border-radius:2px;padding:14px 0;
+  font-family:'Montserrat',sans-serif;font-size:13px;font-weight:500;
+  cursor:pointer;transition:all .25s;letter-spacing:.05em;width:100%;
+}
+.val-btn:hover{border-color:#3a3a3a;color:#aaa;}
+.val-btn.sel{border-color:#fff;color:#fff;background:rgba(255,255,255,.03);}
+
+/* input */
+.inp{
+  width:100%;background:transparent;border:none;
+  border-bottom:1px solid #1c1c1c;
+  color:#fff;font-family:'Montserrat',sans-serif;
+  font-size:28px;font-weight:300;padding:8px 0;
+  outline:none;transition:border-color .3s;letter-spacing:.02em;
+}
+.inp:focus{border-color:#555;}
+.inp::placeholder{color:#1c1c1c;}
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;}
+input[type=number]{-moz-appearance:textfield;}
+
+/* botao principal */
+.btn-main{
+  width:100%;background:#fff;color:#000;border:none;border-radius:2px;
+  padding:18px;font-family:'Montserrat',sans-serif;font-size:10px;
+  font-weight:600;letter-spacing:.22em;text-transform:uppercase;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;
+  transition:all .3s;
+}
+.btn-main:hover{background:#e8e8e8;}
+.btn-main:active{transform:scale(.997);}
+.btn-main:disabled{opacity:.3;cursor:not-allowed;}
+
+.btn-ghost{
+  width:100%;background:transparent;color:#fff;
+  border:1px solid #1c1c1c;border-radius:2px;padding:16px;
+  font-family:'Montserrat',sans-serif;font-size:10px;font-weight:500;
+  letter-spacing:.18em;text-transform:uppercase;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;
+  transition:all .25s;
+}
+.btn-ghost:hover{border-color:#444;color:#ccc;}
+
+/* cartao visual */
+.gift-card{
+  background:#080808;
+  border:1px solid #161616;
+  border-radius:14px;
+  position:relative;overflow:hidden;
+  width:100%;max-width:400px;height:220px;
+  padding:26px 28px;
+  display:flex;flex-direction:column;justify-content:space-between;
+  box-shadow:0 40px 80px rgba(0,0,0,.9),0 0 0 1px rgba(255,255,255,.03);
+}
+.gift-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.08),transparent);
+}
+.gift-card-glow{
+  position:absolute;top:-80px;right:-60px;
+  width:280px;height:280px;
+  background:radial-gradient(circle,rgba(255,255,255,.018) 0%,transparent 60%);
+  pointer-events:none;
+}
+
+.chip{
+  width:34px;height:25px;
+  background:linear-gradient(135deg,#c0a060,#dfc07a,#b09040);
+  border-radius:3px;position:relative;
+}
+.chip::before{content:'';position:absolute;inset:5px 4px;border:1px solid rgba(0,0,0,.2);border-radius:2px;}
+.chip::after{content:'';position:absolute;top:50%;left:4px;right:4px;height:1px;background:rgba(0,0,0,.12);transform:translateY(-50%);}
+
+/* wallet cards */
+.w-card{
+  background:#060606;border:1px solid #111;border-radius:10px;
+  overflow:hidden;transition:border-color .3s,transform .3s;
+}
+.w-card:hover{border-color:#2a2a2a;transform:translateY(-2px);}
+.w-card .top-stripe{height:1.5px;background:#fff;}
+.w-card.inactive .top-stripe{background:#1c1c1c;}
+.w-card.inactive{opacity:.4;}
+
+.badge{
+  font-size:8px;font-weight:600;letter-spacing:.15em;text-transform:uppercase;
+  padding:3px 9px;border-radius:20px;border:1px solid;
+}
+.badge-on{color:#666;border-color:#222;}
+.badge-off{color:#2a2a2a;border-color:#161616;}
+
+/* overlay */
+#animOverlay{
+  position:fixed;inset:0;background:#000;z-index:9000;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .5s ease;
+}
+#animOverlay.show{opacity:1;pointer-events:all;}
+
+.anim-card{
+  width:290px;height:168px;
+  background:#080808;border:1px solid #181818;border-radius:12px;
+  display:flex;align-items:center;justify-content:center;flex-direction:column;
+  position:relative;overflow:hidden;
+  box-shadow:0 0 60px rgba(255,255,255,.03);
+  animation:cardFloat 3.5s ease-in-out infinite;
+}
+.anim-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.07),transparent);
+}
+.scan-line{
+  position:absolute;left:0;right:0;height:1px;top:0;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.25),transparent);
+  animation:scan 2.5s linear infinite;
+}
+@keyframes scan{from{top:0}to{top:100%}}
+@keyframes cardFloat{
+  0%,100%{transform:translateY(0) rotateX(4deg) rotateY(-4deg);}
+  40%{transform:translateY(-10px) rotateX(6deg) rotateY(6deg);}
+  70%{transform:translateY(-5px) rotateX(3deg) rotateY(-7deg);}
+}
+
+.prog-track{width:240px;height:1px;background:rgba(255,255,255,.06);margin-top:36px;border-radius:1px;overflow:hidden;}
+.prog-fill{height:100%;background:#fff;border-radius:1px;width:0%;transition:width 2.5s ease-out;}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(18px);}to{opacity:1;transform:translateY(0);}}
+.fade-in{animation:fadeUp .5s ease both;}
+@keyframes spinEl{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+
+/* debug */
+#debugBox{
+  position:fixed;bottom:0;left:0;right:0;background:#080808;
+  border-top:1px solid #300;
+  padding:10px 16px;font-family:'Space Mono',monospace;font-size:10px;
+  color:#c00;max-height:130px;overflow-y:auto;z-index:8000;display:none;
+}
+#debugBox.show{display:block;}
+.dl{margin-bottom:3px;line-height:1.5;}
+.dl.ok{color:#3a7a3a;}
+.dl.warn{color:#7a5a20;}
+.dl.err{color:#c00;}
+
+.qr-box{background:#fff;border-radius:6px;padding:10px;display:inline-flex;}
+::-webkit-scrollbar{width:3px;}
+::-webkit-scrollbar-track{background:#000;}
+::-webkit-scrollbar-thumb{background:#1a1a1a;border-radius:3px;}
+</style>
+</head>
+<body>
+
+<!-- OVERLAY ANIMAÇÃO -->
+<div id="animOverlay">
+  <div style="perspective:900px;">
+    <div class="anim-card">
+      <div class="scan-line"></div>
+      <p class="logo-font" style="font-size:24px;color:#fff;opacity:.85;">Boutique Diniz</p>
+      <p style="font-size:7px;letter-spacing:.35em;color:#333;margin-top:8px;text-transform:uppercase;">Moda Feminina</p>
+    </div>
+  </div>
+  <p style="font-size:8px;letter-spacing:.38em;color:#2a2a2a;text-transform:uppercase;margin-top:30px;">A gerar o seu cartão</p>
+  <div class="prog-track"><div class="prog-fill" id="progFill"></div></div>
+</div>
+
+<!-- DEBUG -->
+<div id="debugBox">
+  <div style="color:#3a3a3a;margin-bottom:6px;letter-spacing:.12em;font-size:8px;text-transform:uppercase;">Diagnóstico</div>
+  <div id="debugLog"></div>
+</div>
+
+<div id="app-header"></div>
+
+<main style="max-width:500px;margin:0 auto;padding:64px 24px 100px;">
+
+  <!-- CABEÇALHO -->
+  <div class="fade-in" style="text-align:center;margin-bottom:72px;animation-delay:.05s;">
+    <p style="font-size:8px;letter-spacing:.42em;color:#2a2a2a;text-transform:uppercase;margin-bottom:22px;">Boutique Diniz</p>
+    <h1 class="serif" style="font-size:56px;font-weight:400;line-height:1;color:#fff;font-style:italic;letter-spacing:-.01em;">Gift Card</h1>
+    <div class="rule-dim" style="width:32px;margin:22px auto;"></div>
+    <p style="font-size:9px;letter-spacing:.22em;color:#2a2a2a;text-transform:uppercase;">Presenteie com exclusividade</p>
+  </div>
+
+  <!-- ── STEP COMPRA ── -->
+  <div id="stepCompra" class="fade-in" style="animation-delay:.15s;">
+
+    <div style="margin-bottom:52px;">
+      <p style="font-size:8px;letter-spacing:.32em;color:#2a2a2a;text-transform:uppercase;margin-bottom:22px;">Valor do presente</p>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:32px;">
+        <button class="val-btn" onclick="selecionarValor(50)">R$ 50</button>
+        <button class="val-btn" onclick="selecionarValor(100)">R$ 100</button>
+        <button class="val-btn" onclick="selecionarValor(200)">R$ 200</button>
+        <button class="val-btn" onclick="selecionarValor(500)">R$ 500</button>
+      </div>
+      <label style="font-size:8px;letter-spacing:.28em;color:#2a2a2a;text-transform:uppercase;display:block;margin-bottom:12px;">Outro valor</label>
+      <div style="display:flex;align-items:baseline;gap:8px;">
+        <span style="font-size:16px;color:#2a2a2a;font-family:'Montserrat',sans-serif;">R$</span>
+        <input class="inp" id="valorInput" type="number" min="10" step="1" placeholder="0,00">
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:28px;padding-bottom:28px;" class="rule-dim" id="totalRow">
+      <span style="font-size:8px;letter-spacing:.28em;color:#2a2a2a;text-transform:uppercase;">Total PIX</span>
+      <span class="serif" id="valorExibicao" style="font-size:44px;font-weight:400;color:#fff;font-style:italic;">R$ —</span>
+    </div>
+    <div class="rule-dim" style="margin-bottom:28px;"></div>
+
+    <button class="btn-main" id="btnPix" onclick="handlePixClick()">
+      <span class="material-symbols-outlined" style="font-size:17px;">qr_code_scanner</span>
+      Gerar PIX
+    </button>
+
+    <!-- Preview -->
+    <div style="margin-top:60px;text-align:center;">
+      <p style="font-size:8px;letter-spacing:.28em;color:#1c1c1c;text-transform:uppercase;margin-bottom:18px;">Prévia</p>
+      <div class="gift-card" style="margin:0 auto;">
+        <div class="gift-card-glow"></div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;position:relative;z-index:1;">
+          <p class="logo-font" style="font-size:22px;color:#fff;">Boutique Diniz</p>
+          <div class="chip"></div>
+        </div>
+        <div style="position:relative;z-index:1;">
+          <p style="font-size:7px;letter-spacing:.28em;color:#2a2a2a;text-transform:uppercase;margin-bottom:5px;">Valor do Presente</p>
+          <p class="serif" id="previewValor" style="font-size:28px;font-weight:400;font-style:italic;color:#fff;margin-bottom:12px;">R$ —</p>
+          <p class="mono" style="font-size:11px;letter-spacing:.14em;color:#1e1e1e;">•••• •••• •••• ••••</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── STEP PIX ── -->
+  <div id="stepPix" style="display:none;flex-direction:column;align-items:center;padding:40px 0;" class="fade-in">
+    <span class="material-symbols-outlined" style="font-size:36px;color:#fff;margin-bottom:20px;opacity:.5;">qr_code_2</span>
+    <h2 class="serif" style="font-size:34px;font-weight:400;font-style:italic;margin-bottom:6px;">Escaneie para pagar</h2>
+    <p style="font-size:8px;letter-spacing:.28em;color:#2a2a2a;margin-bottom:36px;text-transform:uppercase;">Confirmação instantânea via PIX</p>
+    <div class="qr-box" style="margin-bottom:28px;">
+      <img id="qrPix" src="" style="width:156px;height:156px;display:block;">
+    </div>
+    <div style="width:100%;max-width:360px;margin-bottom:32px;">
+      <p style="font-size:8px;letter-spacing:.22em;color:#2a2a2a;text-transform:uppercase;margin-bottom:10px;">Pix copia e cola</p>
+      <div style="display:flex;border:1px solid #1a1a1a;border-radius:2px;overflow:hidden;">
+        <input id="copiaCola" type="text" readonly class="mono" style="flex:1;background:transparent;border:none;padding:11px 13px;color:#333;font-size:9px;outline:none;letter-spacing:.04em;">
+        <button onclick="copiarPix()" style="background:#fff;color:#000;border:none;padding:0 16px;font-family:'Montserrat',sans-serif;font-size:8px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;cursor:pointer;white-space:nowrap;transition:background .2s;" onmouseover="this.style.background='#ddd'" onmouseout="this.style.background='#fff'">Copiar</button>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span class="material-symbols-outlined" style="font-size:15px;color:#2a2a2a;animation:spinEl 2s linear infinite;">sync</span>
+      <p style="font-size:8px;letter-spacing:.28em;color:#2a2a2a;text-transform:uppercase;">Aguardando pagamento</p>
+    </div>
+  </div>
+
+  <!-- ── STEP SUCESSO ── -->
+  <div id="stepSucesso" style="display:none;flex-direction:column;align-items:center;" class="fade-in">
+    <div style="margin-bottom:44px;text-align:center;">
+      <div style="width:52px;height:52px;border:1px solid #1c1c1c;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;">
+        <span class="material-symbols-outlined" style="font-size:22px;color:#fff;">check</span>
+      </div>
+      <h2 class="serif" style="font-size:38px;font-weight:400;font-style:italic;margin-bottom:8px;">Aprovado</h2>
+      <p style="font-size:8px;letter-spacing:.28em;color:#2a2a2a;text-transform:uppercase;">Seu gift card está pronto</p>
+    </div>
+
+    <!-- Cartão para download -->
+    <div id="cartaoVisual" class="gift-card" style="margin-bottom:32px;">
+      <div class="gift-card-glow"></div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;position:relative;z-index:1;">
+        <p class="logo-font" style="font-size:22px;color:#fff;">Boutique Diniz</p>
+        <div class="chip"></div>
+      </div>
+      <div style="position:relative;z-index:1;">
+        <p style="font-size:7px;letter-spacing:.28em;color:#2a2a2a;text-transform:uppercase;margin-bottom:5px;">Valor do Presente</p>
+        <p class="serif" id="cardValor" style="font-size:30px;font-weight:400;font-style:italic;color:#fff;margin-bottom:12px;">R$ —</p>
+        <p class="mono" id="cardNumero" style="font-size:11px;letter-spacing:.14em;color:#555;">•••• •••• •••• ••••</p>
+      </div>
+    </div>
+
+    <div style="width:100%;max-width:400px;display:flex;flex-direction:column;gap:8px;margin-bottom:28px;">
+      <button class="btn-main" onclick="baixarCartao()">
+        <span class="material-symbols-outlined" style="font-size:16px;">download</span>
+        Baixar imagem do cartão
+      </button>
+      <button class="btn-ghost" onclick="whatsappOriginal()">
+        <span class="material-symbols-outlined" style="font-size:16px;">send</span>
+        Enviar pelo WhatsApp
+      </button>
+    </div>
+    <button onclick="location.reload()" style="background:none;border:none;color:#2a2a2a;font-family:'Montserrat',sans-serif;font-size:9px;letter-spacing:.18em;text-transform:uppercase;cursor:pointer;transition:color .25s;" onmouseover="this.style.color='#666'" onmouseout="this.style.color='#2a2a2a'">
+      + Comprar outro cartão
+    </button>
+  </div>
+
+  <!-- ── HISTÓRICO ── -->
+  <section id="secaoHistorico" style="margin-top:88px;">
+    <div class="rule" style="margin-bottom:44px;"></div>
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:32px;">
+      <h2 class="serif" style="font-size:30px;font-weight:400;font-style:italic;color:#fff;">Meus Cartões</h2>
+      <p style="font-size:7px;letter-spacing:.35em;color:#1c1c1c;text-transform:uppercase;">Wallet</p>
+    </div>
+    <div id="histLoader" style="text-align:center;padding:40px 0;">
+      <p style="font-size:8px;letter-spacing:.32em;color:#1c1c1c;text-transform:uppercase;">Carregando</p>
+    </div>
+    <div id="histGrid" style="display:none;flex-direction:column;gap:10px;"></div>
+  </section>
+</main>
+
+<div id="app-footer"></div>
+
+<script>
+// ── DIAGNÓSTICO ──
+const DBG = {
+  log(msg, t='ok'){
+    const el = document.getElementById('debugLog');
+    if(el) el.innerHTML += `<div class="dl ${t}">[${new Date().toLocaleTimeString('pt-BR')}] ${msg}</div>`;
+    if(t==='err') document.getElementById('debugBox').classList.add('show');
+    const box = document.getElementById('debugBox');
+    if(box) box.scrollTop = 9999;
+    console[t==='err'?'error':t==='warn'?'warn':'log'](msg);
+  },
+  ok:  m=>DBG.log('✓ '+m,'ok'),
+  warn:m=>DBG.log('⚠ '+m,'warn'),
+  err: m=>DBG.log('✗ '+m,'err')
+};
+window.DBG = DBG;
+
+// ── ESTADO ──
+let valorEscolhido = null;
+let dadosCartao    = null;
+
+// ── VALOR ──
+window.selecionarValor = v => {
+  valorEscolhido = parseFloat(v);
+  document.getElementById('valorInput').value = '';
+  atualizarValor();
+  document.querySelectorAll('.val-btn').forEach(b =>
+    b.classList.toggle('sel', parseInt(b.textContent.replace(/\D/g,'')) === valorEscolhido));
+};
+
+document.getElementById('valorInput').addEventListener('input', e => {
+  const v = parseFloat(e.target.value);
+  if(!isNaN(v) && v >= 10){
+    valorEscolhido = v;
+    atualizarValor();
+    document.querySelectorAll('.val-btn').forEach(b => b.classList.remove('sel'));
+  }
+});
+
+function atualizarValor(){
+  const f = valorEscolhido ? `R$ ${valorEscolhido.toFixed(2).replace('.',',')}` : 'R$ —';
+  ['valorExibicao','previewValor'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.textContent = f;
+  });
+}
+
+// ── BOTÃO PIX ──
+window.handlePixClick = function(){
+  DBG.ok('Botão clicado — valorEscolhido: '+valorEscolhido);
+  if(!valorEscolhido || valorEscolhido < 10){
+    alert('Escolha um valor de pelo menos R$ 10,00.');
+    return;
+  }
+  if(typeof window.processarPix === 'function'){
+    DBG.ok('Chamando window.processarPix()');
+    window.processarPix();
+  } else {
+    DBG.err('window.processarPix não encontrado — veja o diagnóstico abaixo');
+    alert('O módulo de pagamento não carregou corretamente.\nVerifique o painel de diagnóstico no rodapé da página.');
+  }
+};
+
+// ── HELPERS UI ──
+const show = (id,d='flex') => { const e=document.getElementById(id); if(e) e.style.display=d; };
+const hide = id => { const e=document.getElementById(id); if(e) e.style.display='none'; };
+
+// ── ANIMAÇÃO ──
+window.mostrarAnimacaoGeracao = cb => {
+  const ov = document.getElementById('animOverlay');
+  const fill = document.getElementById('progFill');
+  if(ov) ov.classList.add('show');
+  if(fill){ fill.style.width='0%'; setTimeout(()=>fill.style.width='100%',50); }
+  setTimeout(cb, 2800);
+};
+window.ocultarAnimacao = () => {
+  const ov = document.getElementById('animOverlay');
+  if(ov) ov.classList.remove('show');
+};
+
+// ── EXPOR PARA O MÓDULO ──
+window.exibirStepPix = function(dadosPix){
+  hide('stepCompra');
+  show('stepPix');
+  let src = dadosPix.pix?.qrCodeImage || '';
+  if(src && !src.startsWith('data:') && !src.startsWith('http')) src = 'data:image/png;base64,'+src;
+  document.getElementById('qrPix').src = src;
+  document.getElementById('copiaCola').value = dadosPix.pix?.copyPaste || '';
+  DBG.ok('PIX exibido');
+};
+
+window.exibirStepSucesso = function(cartao, valor){
+  ocultarAnimacao();
+  hide('stepPix'); hide('stepCompra');
+  dadosCartao = cartao;
+  const fmt = `R$ ${parseFloat(valor).toFixed(2).replace('.',',')}`;
+  const num = cartao.numero?.match(/.{1,4}/g)?.join(' ') || '—';
+  document.getElementById('cardValor').textContent  = fmt;
+  document.getElementById('cardNumero').textContent = num;
+  show('stepSucesso');
+  DBG.ok('Cartão gerado: '+num);
+};
+
+window.exibirHistorico = function(cartoes){
+  hide('histLoader');
+  const grid = document.getElementById('histGrid');
+  if(!grid) return;
+  grid.style.display = 'flex';
+  if(!cartoes||!cartoes.length){
+    grid.innerHTML = `<p style="font-size:9px;letter-spacing:.2em;color:#1c1c1c;text-transform:uppercase;">Nenhum cartão encontrado</p>`;
+    return;
+  }
+  grid.innerHTML = cartoes.map(c => {
+    const num = c.numero?.match(/.{1,4}/g)?.join(' ') || '—';
+    const saldo = parseFloat(c.saldo??c.valor).toFixed(2).replace('.',',');
+    const inativo = ['utilizado','resgatado','vencido','used'].includes(c.status)||c.usado;
+    const val = c.validade ? new Date(c.validade).toLocaleDateString('pt-BR',{month:'2-digit',year:'2-digit'}) : '—';
+    return `
+    <div class="w-card ${inativo?'inactive':''}">
+      <div class="top-stripe"></div>
+      <div style="padding:20px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;">
+          <p class="logo-font" style="font-size:19px;color:#fff;">Boutique Diniz</p>
+          <span class="badge ${inativo?'badge-off':'badge-on'}">${inativo?'Encerrado':'Ativo'}</span>
+        </div>
+        <p class="serif" style="font-size:30px;font-weight:400;font-style:italic;color:#fff;margin-bottom:12px;">R$ ${saldo}</p>
+        <div style="background:rgba(255,255,255,.015);border:1px solid #111;border-radius:4px;padding:10px 13px;margin-bottom:14px;">
+          <p class="mono" style="font-size:11px;letter-spacing:.1em;color:#2a2a2a;text-align:center;">${num}</p>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <p style="font-size:8px;letter-spacing:.18em;color:#1c1c1c;text-transform:uppercase;">Válido <span style="color:#333;">${val}</span></p>
+          ${!inativo?`
+          <div style="display:flex;gap:6px;">
+            <button onclick="baixarCartaoLista('${c.numero}','${saldo}')" class="btn-ghost" style="padding:8px 13px;font-size:8px;border-radius:2px;width:auto;">
+              <span class="material-symbols-outlined" style="font-size:13px;">download</span> Baixar
+            </button>
+            <button onclick="whatsappLista('${c.numero}','${saldo}')" class="btn-main" style="padding:8px 13px;font-size:8px;border-radius:2px;width:auto;">
+              <span class="material-symbols-outlined" style="font-size:13px;">send</span> Enviar
+            </button>
+          </div>`:''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+};
+
+window.copiarPix = function(){
+  const el = document.getElementById('copiaCola');
+  if(!el) return;
+  try{ navigator.clipboard.writeText(el.value); }catch(e){ el.select(); document.execCommand('copy'); }
+  alert('PIX copiado! Abra o app do seu banco para pagar.');
+};
+
+window.baixarCartao = function(){
+  const el = document.getElementById('cartaoVisual');
+  if(!el||!window.html2canvas){ alert('Aguarde...'); return; }
+  html2canvas(el,{backgroundColor:'#080808',scale:2,useCORS:true}).then(c=>{
+    const a=document.createElement('a');
+    a.download='GiftCard_BoutiqueDiniz.png';
+    a.href=c.toDataURL('image/png');
+    a.click();
+  });
+};
+
+window.baixarCartaoLista = function(numero, valor){
+  const num = numero.match(/.{1,4}/g).join(' ');
+  const tpl = document.createElement('div');
+  tpl.style.cssText = 'position:fixed;left:-9999px;top:0;width:400px;height:220px;padding:26px 28px;background:#080808;border:1px solid #161616;border-radius:14px;display:flex;flex-direction:column;justify-content:space-between;';
+  tpl.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+      <span style="font-family:'Satisfy',cursive;font-size:22px;color:#fff;">Boutique Diniz</span>
+      <div style="width:34px;height:25px;background:linear-gradient(135deg,#c0a060,#dfc07a);border-radius:3px;"></div>
+    </div>
+    <div>
+      <p style="font-size:7px;letter-spacing:.28em;color:#2a2a2a;text-transform:uppercase;margin-bottom:5px;">Valor do Presente</p>
+      <p style="font-family:'Playfair Display',serif;font-size:28px;font-weight:400;font-style:italic;color:#fff;margin-bottom:12px;">R$ ${valor}</p>
+      <p style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.14em;color:#555;">${num}</p>
+    </div>`;
+  document.body.appendChild(tpl);
+  html2canvas(tpl,{backgroundColor:'#080808',scale:2}).then(c=>{
+    const a=document.createElement('a');
+    a.download=`GiftCard_${num.replace(/\s/g,'')}.png`;
+    a.href=c.toDataURL('image/png');
+    a.click();
+    document.body.removeChild(tpl);
+  });
+};
+
+window.whatsappOriginal = function(){
+  if(!dadosCartao) return;
+  whatsappLista(dadosCartao.numero, parseFloat(dadosCartao.saldo??dadosCartao.valor).toFixed(2).replace('.',','));
+};
+window.whatsappLista = function(numero, valor){
+  const num = numero.match(/.{1,4}/g).join(' ');
+  const msg = `✨ *Você ganhou um Gift Card da Boutique Diniz!*\n\n`+
+    `💰 Valor: *R$ ${valor}*\n\n`+
+    `💳 *Número:* ${num}\n\n`+
+    `Use este código no carrinho do nosso site:\n🛍️ https://boutiquediniz.com`;
+  window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`,'_blank');
+};
+
+// ── BOOTSTRAP ──
+(async()=>{
+  DBG.ok('Página iniciada');
+  const m = async p => { try{ return await import(p); }catch(e){ return {}; } };
+
+  const layout = await m('./layout.js');
+  layout.inicializarLayout?.() ? DBG.ok('layout.js OK') : DBG.warn('layout.js sem inicializarLayout');
+
+  const pwa = await m('./motor-pwa.js');
+  pwa.iniciarPWA?.() ? DBG.ok('motor-pwa.js OK') : DBG.warn('motor-pwa.js sem iniciarPWA');
+
+  try{
+    await import('./cartao-presente-logic.js');
+    if(typeof window.processarPix==='function'){
+      DBG.ok('cartao-presente-logic.js carregado — window.processarPix OK ✓');
+    } else {
+      DBG.err('Módulo carregou mas window.processarPix não foi exportado');
+    }
+  }catch(e){
+    DBG.err('cartao-presente-logic.js: '+e.message);
+    DBG.warn('Dependências ausentes: recuperar-dados-padrao.js e/ou chavetoken.js');
+  }
+})();
+</script>
+</body>
+</html>
