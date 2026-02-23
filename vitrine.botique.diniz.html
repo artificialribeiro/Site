@@ -3,190 +3,296 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
-    <title>Detalhes do Produto | Boutique Diniz</title>
-    
+    <title>Boutique Diniz | Produto</title>
+
     <meta property="og:type" content="product">
     <meta property="og:site_name" content="Boutique Diniz">
     <meta property="og:title" id="seoTitle" content="Boutique Diniz | Produto Exclusivo">
     <meta property="og:description" id="seoDesc" content="Acesse para ver tamanhos, cores e adicionar ao seu carrinho.">
-    <meta property="og:image" id="seoImage" content="https://via.placeholder.com/600x800/111/fff?text=Boutique+Diniz">
+    <meta property="og:image" id="seoImage" content="">
 
     <link rel="icon" type="image/png" href="logo.png">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#000">
 
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Satisfy&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,300,0,0" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Satisfy&family=Montserrat:ital,wght@0,200;0,300;0,400;0,500;0,600;0,700;1,300&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,300,0,0" rel="stylesheet"/>
 
     <style>
-        body { background-color: #000; color: #fff; font-family: 'Montserrat', sans-serif; overflow-x: hidden; }
+        :root {
+            --bg: #000;
+            --s1: #080808;
+            --s2: #0f0f0f;
+            --bd: rgba(255,255,255,.07);
+            --bdh: rgba(255,255,255,.18);
+        }
+        * { box-sizing: border-box; }
+        body { background: var(--bg); color: #fff; font-family: 'Montserrat', sans-serif; overflow-x: hidden; -webkit-font-smoothing: antialiased; }
         .font-logo { font-family: 'Satisfy', cursive; }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 3px; height: 3px; }
+        ::-webkit-scrollbar-thumb { background: #222; border-radius: 3px; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        
-        .thumb-ativa { border-color: #fff !important; opacity: 1 !important; }
-        .variante-ativa { background-color: #fff; color: #000; border-color: #fff; }
 
-        #lightboxImg { transition: transform 0.3s ease; }
-        .product-card .img-hover { opacity: 0; transition: opacity 0.5s ease, transform 0.5s ease; }
-        .product-card:hover .img-hover { opacity: 1; transform: scale(1.05); }
-        .product-card:hover .img-main { opacity: 0; }
-        .img-main { transition: opacity 0.5s ease, transform 0.5s ease; }
-        .product-card:hover .img-main-only { transform: scale(1.05); }
+        /* Skeleton */
+        @keyframes sk { 0%,100%{opacity:.35} 50%{opacity:.7} }
+        .sk { background: #111; border-radius: 8px; animation: sk 1.7s ease-in-out infinite; }
+
+        /* Foto */
+        #fotoWrap { position: relative; overflow: hidden; border-radius: 20px; background: #080808; border: 1px solid rgba(255,255,255,.06); cursor: zoom-in; }
+        #fotoPrincipal { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .55s cubic-bezier(.25,.46,.45,.94), opacity .2s ease; }
+        #fotoWrap:hover #fotoPrincipal { transform: scale(1.035); }
+        #fotoWrap .zhint { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity .2s; pointer-events: none; background: rgba(0,0,0,.22); }
+        #fotoWrap:hover .zhint { opacity: 1; }
+
+        /* Thumbs */
+        .tb { border-radius: 10px; overflow: hidden; border: 2px solid transparent; opacity: .45; cursor: pointer; flex-shrink: 0; transition: border-color .18s, opacity .18s, transform .12s; }
+        .tb:hover { opacity: .82; transform: scale(1.05); }
+        .tb.on { border-color: #fff; opacity: 1; }
+
+        /* Badge entrega */
+        .badge-ent { background: linear-gradient(135deg, rgba(34,197,94,.07), rgba(16,185,129,.04)); border: 1px solid rgba(34,197,94,.2); border-radius: 14px; padding: 14px 16px; }
+
+        /* Variantes */
+        .bv { border: 1px solid #2a2a2a; background: #0c0c0c; color: #777; border-radius: 10px; font-family: 'Montserrat', sans-serif; font-size: .8rem; font-weight: 500; cursor: pointer; transition: border-color .15s, background .15s, color .15s, transform .1s; }
+        .bv:hover:not(.off) { border-color: var(--bdh); color: #fff; transform: translateY(-1px); }
+        .bv:active { transform: scale(.96); }
+        .bv.on { background: #fff; color: #000; border-color: #fff; }
+        .bv.off { opacity: .28; cursor: not-allowed; text-decoration: line-through; }
+
+        /* Botão principal */
+        #btnComprar { width: 100%; background: #fff; color: #000; border: none; border-radius: 14px; font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: .7rem; letter-spacing: .16em; text-transform: uppercase; padding: 18px 24px; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; transition: background .15s, transform .1s, box-shadow .2s, opacity .2s; box-shadow: 0 4px 20px rgba(255,255,255,.08); }
+        #btnComprar:hover:not(:disabled) { background: #e6e6e6; transform: translateY(-2px); box-shadow: 0 8px 30px rgba(255,255,255,.13); }
+        #btnComprar:active:not(:disabled) { transform: scale(.98); }
+        #btnComprar:disabled { opacity: .36; cursor: not-allowed; }
+        .spin-icon { animation: girar .7s linear infinite; display: inline-block; }
+        @keyframes girar { to { transform: rotate(360deg); } }
+
+        /* Botão WA */
+        #btnWhatsApp { width: 100%; background: transparent; border: 1px solid #252525; color: #555; border-radius: 14px; font-family: 'Montserrat', sans-serif; font-weight: 600; font-size: .68rem; letter-spacing: .13em; text-transform: uppercase; padding: 15px 24px; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; transition: border-color .15s, color .15s, transform .1s; }
+        #btnWhatsApp:hover { border-color: var(--bdh); color: #bbb; transform: translateY(-1px); }
+        #btnWhatsApp:active { transform: scale(.98); }
+
+        /* Toast */
+        #toastMsg { transform: translateX(calc(100% + 2rem)); transition: transform .4s cubic-bezier(.34,1.4,.64,1); }
+        #toastMsg.show { transform: translateX(0); }
+
+        /* Cards IA */
+        .pc { transition: border-color .2s, box-shadow .2s; border-radius: 12px; overflow: hidden; background: #050505; cursor: pointer; }
+        .pc:hover { border-color: #2a2a2a; box-shadow: 0 10px 36px rgba(0,0,0,.65); }
+        .pc .ih { opacity: 0; transition: opacity .45s, transform .45s; }
+        .pc:hover .ih { opacity: 1; transform: scale(1.05); }
+        .pc:hover .im { opacity: 0; }
+        .im { transition: opacity .45s; }
+        .pc:hover .ims { transform: scale(1.05); transition: transform .45s; }
+
+        /* Separador gradiente */
+        .sep { height: 1px; background: linear-gradient(90deg, transparent, #222, transparent); border: none; }
+
+        /* Descricao */
+        #txtDescricao p { margin-bottom: .6em; }
+        #txtDescricao ul { list-style: disc; padding-left: 1.3em; margin-bottom: .6em; }
+        #txtDescricao li { margin-bottom: .25em; }
+
+        @media (max-width: 767px) {
+            #galeriaWrap { flex-direction: column; }
+            #galeriaThumbs { flex-direction: row; overflow-x: auto; }
+            .tb { width: 56px; height: 68px; }
+        }
     </style>
 
     <script src="motor-ia.js"></script>
 </head>
-<body class="bg-[#000000] text-white min-h-screen flex flex-col antialiased">
+<body class="min-h-screen flex flex-col">
 
     <div id="app-header"></div>
 
-    <div id="toastMessage" class="fixed top-24 right-4 bg-green-600 text-white px-6 py-3 rounded shadow-2xl transform translate-x-full transition-transform duration-300 z-[100] flex items-center gap-2 font-bold text-sm border border-green-500">
-        <span class="material-symbols-outlined">check_circle</span>
-        Adicionado ao carrinho com sucesso!
+    <!-- TOAST -->
+    <div id="toastMsg" class="fixed top-24 right-4 z-[300] flex items-center gap-3 bg-[#0d0d0d] border border-white/10 text-white text-[11px] font-bold uppercase tracking-widest px-5 py-3.5 rounded-2xl shadow-2xl">
+        <span class="material-symbols-outlined text-green-400 text-base">check_circle</span>
+        Adicionado ao carrinho!
     </div>
 
-    <main class="flex-grow pt-8 pb-16 max-w-7xl mx-auto w-full px-4 relative">
-        
-        <div id="loadingState" class="flex flex-col md:flex-row gap-10 animate-pulse">
-            <div class="w-full md:w-1/2 bg-[#111] h-[500px] rounded-lg border border-gray-900"></div>
-            <div class="w-full md:w-1/2 flex flex-col gap-4 pt-4">
-                <div class="h-4 bg-[#111] w-24 rounded"></div>
-                <div class="h-8 bg-[#111] w-3/4 rounded"></div>
-                <div class="h-6 bg-[#111] w-32 rounded mt-4"></div>
-                <div class="h-12 bg-[#111] w-full rounded mt-8"></div>
+    <main class="flex-grow pt-6 pb-20 max-w-7xl mx-auto w-full px-4 md:px-6">
+
+        <!-- SKELETON -->
+        <div id="loadingState" class="mt-6 flex flex-col md:flex-row gap-10">
+            <div class="w-full md:w-[52%]">
+                <div class="sk w-full rounded-2xl" style="aspect-ratio:3/4;"></div>
+            </div>
+            <div class="w-full md:w-[48%] flex flex-col gap-4 pt-4">
+                <div class="sk h-3 w-28"></div>
+                <div class="sk h-8 w-4/5 mt-1"></div>
+                <div class="sk h-3 w-16 mt-1"></div>
+                <div class="sk h-16 w-full rounded-2xl mt-6"></div>
+                <div class="sk h-9 w-28 mt-6"></div>
+                <div class="flex gap-2 mt-3">
+                    <div class="sk w-12 h-12 rounded-xl"></div>
+                    <div class="sk w-12 h-12 rounded-xl"></div>
+                    <div class="sk w-12 h-12 rounded-xl"></div>
+                </div>
+                <div class="sk h-14 w-full rounded-2xl mt-8"></div>
             </div>
         </div>
 
-        <div id="produtoContainer" class="hidden flex-col md:flex-row gap-10 md:gap-16">
-            
-            <div class="w-full md:w-1/2 flex flex-col-reverse md:flex-row gap-4">
-                <div id="galeriaThumbs" class="flex md:flex-col gap-3 overflow-x-auto md:overflow-y-auto no-scrollbar md:w-20 md:max-h-[600px]"></div>
-                
-                <div class="flex-1 bg-[#050505] border border-gray-900 rounded-lg overflow-hidden relative aspect-[3/4] md:aspect-auto md:h-[600px] group cursor-zoom-in" onclick="abrirLightbox()">
-                    <img id="fotoPrincipal" src="" alt="Produto" class="w-full h-full object-cover transition-opacity duration-300 group-hover:scale-105 transition-transform">
-                    <div id="tagDesconto" class="hidden absolute top-4 left-4 bg-white text-black text-xs font-bold px-3 py-1 uppercase tracking-wider rounded shadow-lg z-10"></div>
-                    <div class="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-20 pointer-events-none">
-                        <div class="bg-black/70 p-4 rounded-full text-white backdrop-blur-sm">
-                            <span class="material-symbols-outlined text-3xl">zoom_in</span>
+        <!-- PRODUTO -->
+        <div id="produtoContainer" class="hidden mt-6">
+            <div class="flex flex-col md:flex-row gap-8 md:gap-14">
+
+                <!-- GALERIA -->
+                <div id="galeriaWrap" class="w-full md:w-[52%] flex gap-3 md:gap-4">
+                    <div id="galeriaThumbs" class="flex md:flex-col gap-2 md:w-[66px] md:max-h-[700px] md:overflow-y-auto no-scrollbar flex-shrink-0 order-2 md:order-1"></div>
+                    <div id="fotoWrap" class="flex-1 order-1 md:order-2" style="aspect-ratio:3/4;" onclick="window.abrirLightbox()">
+                        <img id="fotoPrincipal" src="" alt="Produto">
+                        <div id="tagDesconto" class="hidden absolute top-4 left-4 bg-white text-black text-[10px] font-black px-3 py-1.5 uppercase tracking-widest rounded-full z-10 shadow-lg"></div>
+                        <div class="zhint">
+                            <div class="bg-black/60 backdrop-blur-md p-3.5 rounded-full">
+                                <span class="material-symbols-outlined text-white text-xl">zoom_in</span>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <div class="w-full md:w-1/2 flex flex-col py-2">
-                <nav class="text-[10px] uppercase tracking-widest text-gray-500 mb-4 flex gap-2">
-                    <a href="site.html" class="hover:text-white transition-colors">Início</a> / 
-                    <span id="txtCategoria" class="text-gray-300">Carregando...</span>
-                </nav>
+                <!-- INFORMAÇÕES -->
+                <div class="w-full md:w-[48%] flex flex-col">
 
-                <h1 id="txtNome" class="text-3xl md:text-4xl font-light text-white mb-2">Carregando...</h1>
-                <p id="txtSku" class="text-xs text-gray-500 font-mono mb-6">SKU: ---</p>
+                    <!-- Breadcrumb -->
+                    <nav class="flex items-center gap-1.5 text-[10px] uppercase tracking-[.2em] text-[#333] mb-5">
+                        <a href="site.html" class="hover:text-white transition-colors">Início</a>
+                        <span class="material-symbols-outlined text-[12px]">chevron_right</span>
+                        <span id="txtCategoria" class="text-[#444]">—</span>
+                    </nav>
 
-                <div class="mb-6 bg-[#111] border border-gray-800 rounded p-4 flex flex-col gap-2">
-                    <div class="flex items-center gap-2 text-sm text-green-400 font-medium">
-                        <span class="material-symbols-outlined text-[18px]">storefront</span>
-                        Retire na loja grátis!
+                    <!-- Nome + SKU -->
+                    <h1 id="txtNome" class="text-[1.7rem] md:text-[2rem] font-light leading-tight tracking-tight text-white mb-1.5">—</h1>
+                    <p id="txtSku" class="text-[10px] font-mono text-[#333] tracking-widest mb-6">SKU: —</p>
+
+                    <!-- ─── BADGE ENTREGA CACHOEIRO ─── -->
+                    <div class="badge-ent mb-7 flex items-start gap-3.5">
+                        <span class="material-symbols-outlined text-green-400 text-xl mt-0.5 flex-shrink-0">electric_moped</span>
+                        <div>
+                            <p class="text-green-400 font-semibold text-sm leading-tight mb-1">
+                                Disponível em Cachoeiro de Itapemirim — ES
+                            </p>
+                            <p class="text-[#4a4a4a] text-[11px] leading-relaxed">
+                                Entrega via motoboy em até <span class="text-white font-semibold">3 horas</span>&ensp;·&ensp;Retire também na loja física
+                            </p>
+                        </div>
                     </div>
-                    <div class="text-xs text-gray-400" id="txtUnidade">
-                        📍 Disponível na unidade: <b class="text-white">Carregando...</b>
+
+                    <!-- Preço -->
+                    <div class="flex items-end gap-3 mb-8 pb-7 border-b border-white/5">
+                        <span id="txtPrecoAtual" class="text-[2rem] font-light text-white tracking-tight">R$ 0,00</span>
+                        <span id="txtPrecoAntigo" class="hidden text-sm text-[#3a3a3a] line-through mb-1.5">R$ 0,00</span>
                     </div>
-                </div>
 
-                <div class="flex items-end gap-3 mb-8 pb-6 border-b border-gray-900">
-                    <span id="txtPrecoAtual" class="text-2xl font-medium text-white">R$ 0,00</span>
-                    <span id="txtPrecoAntigo" class="text-sm text-gray-600 line-through mb-1 hidden">R$ 0,00</span>
-                </div>
-
-                <div id="variacoesContainer" class="flex flex-col gap-6 mb-8">
-                    <div>
-                        <div class="flex justify-between items-center mb-3">
-                            <h3 class="text-xs uppercase tracking-widest text-gray-400">Tamanho</h3>
-                            <button onclick="abrirGuiaMedidas()" class="text-[10px] text-gray-500 hover:text-white underline decoration-gray-700 flex items-center gap-1">
-                                <span class="material-symbols-outlined text-[14px]">straighten</span> Como saber minha medida?
+                    <!-- Tamanhos -->
+                    <div class="mb-6">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-[10px] uppercase tracking-[.2em] text-[#444]">Tamanho</h3>
+                            <button onclick="window.abrirGuiaMedidas()" class="text-[10px] text-[#3a3a3a] hover:text-white transition-colors flex items-center gap-1">
+                                <span class="material-symbols-outlined text-[12px]">straighten</span> Como medir?
                             </button>
                         </div>
-                        <div id="gridTamanhos" class="flex flex-wrap gap-3"></div>
+                        <div id="gridTamanhos" class="flex flex-wrap gap-2"></div>
                     </div>
 
-                    <div id="boxCores" class="hidden">
-                        <h3 class="text-xs uppercase tracking-widest text-gray-400 mb-3">Cor</h3>
-                        <div id="gridCores" class="flex flex-wrap gap-3"></div>
+                    <!-- Cores -->
+                    <div id="boxCores" class="hidden mb-7">
+                        <h3 class="text-[10px] uppercase tracking-[.2em] text-[#444] mb-3">Cor</h3>
+                        <div id="gridCores" class="flex flex-wrap gap-2"></div>
                     </div>
-                </div>
 
-                <div class="flex flex-col gap-3">
-                    <button id="btnComprar" disabled class="w-full bg-white text-black font-bold uppercase tracking-widest py-4 rounded hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3">
-                        <span class="material-symbols-outlined">local_mall</span>
-                        Selecione um Tamanho
-                    </button>
+                    <!-- Botões -->
+                    <div class="flex flex-col gap-2.5 mt-1">
+                        <button id="btnComprar" disabled>
+                            <span class="material-symbols-outlined text-[18px]">local_mall</span>
+                            Selecione um Tamanho
+                        </button>
+                        <button id="btnWhatsApp">
+                            <svg class="w-4 h-4 fill-current flex-shrink-0" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
+                            Compartilhar Look
+                        </button>
+                    </div>
 
-                    <button id="btnWhatsApp" class="w-full border border-[#25D366] text-[#25D366] font-bold uppercase tracking-widest py-3 rounded hover:bg-[#25D366]/10 transition-colors flex items-center justify-center gap-3">
-                        <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
-                        Compartilhar Look
-                    </button>
-                </div>
+                    <!-- Descrição -->
+                    <div class="mt-10 pt-7 border-t border-white/5">
+                        <h3 class="text-[10px] uppercase tracking-[.2em] text-[#3a3a3a] mb-4">Detalhes do Produto</h3>
+                        <div id="txtDescricao" class="text-sm text-[#5a5a5a] font-light leading-relaxed"></div>
+                    </div>
 
-                <div class="mt-12">
-                    <h3 class="text-xs uppercase tracking-widest text-gray-400 mb-4 pb-2 border-b border-gray-900">Detalhes do Produto</h3>
-                    <div id="txtDescricao" class="text-sm text-gray-400 font-light leading-relaxed"></div>
                 </div>
             </div>
+
+            <!-- ─── SEÇÃO IA: VOCÊ TAMBÉM VAI AMAR ─── -->
+            <section id="sectionRecomendados" class="hidden mt-24">
+                <hr class="sep mb-14">
+                <div class="mb-10">
+                    <p class="flex items-center gap-1.5 text-[10px] uppercase tracking-[.22em] text-[#333] mb-2.5 font-semibold">
+                        <span class="material-symbols-outlined text-[13px]">auto_awesome</span>
+                        Curadoria da Inteligência Artificial
+                    </p>
+                    <h2 class="text-[1.5rem] font-light text-white tracking-tight">Você também vai amar</h2>
+                    <p id="iaSubtitulo" class="text-xs text-[#3a3a3a] mt-1.5 font-light"></p>
+                </div>
+                <div id="recomendadosContainer" class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-5"></div>
+            </section>
+
         </div>
-
-        <section id="sectionRecomendados" class="w-full mt-24 hidden border-t border-gray-900 pt-16">
-            <div class="flex flex-col items-center justify-center text-center mb-10">
-                <span class="material-symbols-outlined text-yellow-500 text-3xl mb-2">auto_awesome</span>
-                <h2 class="text-2xl font-light text-white font-logo">Você também pode gostar</h2>
-                <p class="text-xs text-gray-500 uppercase tracking-widest mt-2">Peças selecionadas pela nossa Inteligência Artificial</p>
-            </div>
-            <div id="recomendadosContainer" class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6"></div>
-        </section>
-
     </main>
 
     <div id="app-footer"></div>
 
-    <div id="modalLightbox" class="fixed inset-0 bg-black/95 z-[999] hidden flex-col items-center justify-center backdrop-blur-sm">
-        <button onclick="fecharLightbox()" class="absolute top-6 right-6 bg-white/10 hover:bg-white/20 text-white rounded-full p-2 transition-colors z-50">
+    <!-- LIGHTBOX -->
+    <div id="modalLightbox" class="fixed inset-0 bg-black/94 z-[999] hidden flex-col items-center justify-center" style="backdrop-filter:blur(10px);">
+        <button onclick="window.fecharLightbox()" class="absolute top-5 right-5 bg-white/8 hover:bg-white/14 text-white rounded-full p-2.5 transition-colors z-50 border border-white/8">
             <span class="material-symbols-outlined">close</span>
         </button>
-        <p class="absolute top-6 left-6 text-xs text-gray-500 uppercase tracking-widest hidden md:block">Toque na imagem para ampliar</p>
-        <div class="w-full h-full p-4 md:p-12 flex items-center justify-center overflow-auto no-scrollbar" onclick="this.querySelector('img').classList.toggle('scale-[1.5]'); this.querySelector('img').classList.toggle('cursor-zoom-out');">
-            <img id="lightboxImg" src="" class="max-h-full max-w-full object-contain cursor-zoom-in transition-transform duration-300">
+        <div class="w-full h-full p-6 md:p-14 flex items-center justify-center overflow-auto no-scrollbar"
+             onclick="const i=this.querySelector('img'); i.classList.toggle('scale-150'); i.classList.toggle('cursor-zoom-out'); i.classList.toggle('cursor-zoom-in');">
+            <img id="lightboxImg" src="" class="max-h-full max-w-full object-contain cursor-zoom-in transition-transform duration-300 rounded-xl">
         </div>
     </div>
 
-    <div id="modalGuia" class="fixed inset-0 bg-black/80 z-[999] hidden items-center justify-center p-4 backdrop-blur-sm">
-        <div class="bg-[#111] border border-gray-800 w-full max-w-md rounded-lg overflow-hidden flex flex-col shadow-2xl">
-            <div class="flex justify-between items-center p-4 border-b border-gray-800 bg-[#0a0a0a]">
-                <h3 class="font-bold text-white uppercase tracking-widest text-sm">Guia de Medidas</h3>
-                <button onclick="fecharGuiaMedidas()" class="text-gray-500 hover:text-white"><span class="material-symbols-outlined">close</span></button>
+    <!-- MODAL MEDIDAS -->
+    <div id="modalGuia" class="fixed inset-0 bg-black/82 z-[999] hidden items-center justify-center p-4" style="backdrop-filter:blur(8px);">
+        <div class="bg-[#090909] border border-white/8 w-full max-w-[420px] rounded-2xl overflow-hidden shadow-2xl">
+            <div class="flex justify-between items-center px-5 py-4 border-b border-white/5">
+                <h3 class="text-[10px] font-bold text-white uppercase tracking-[.22em]">Guia de Medidas</h3>
+                <button onclick="window.fecharGuiaMedidas()" class="text-[#3a3a3a] hover:text-white transition-colors">
+                    <span class="material-symbols-outlined text-[20px]">close</span>
+                </button>
             </div>
-            <div class="p-6 text-sm text-gray-300 space-y-4">
-                <div class="bg-yellow-900/30 border border-yellow-700/50 p-3 rounded text-yellow-500 mb-4">
-                    <b class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">lightbulb</span> Dica de Ouro!</b>
-                    Não tem fita métrica? Use um pedaço de <b>barbante, fio de lã ou até cabo de celular</b> para contornar seu corpo. Depois, estique o fio ao lado de uma régua escolar para saber os centímetros exatos!
+            <div class="p-6 space-y-4 text-sm text-[#555] leading-relaxed">
+                <div class="bg-white/3 border border-white/7 rounded-xl p-4">
+                    <p class="flex items-center gap-2 text-white font-semibold text-[10px] uppercase tracking-wider mb-2">
+                        <span class="material-symbols-outlined text-[13px]">lightbulb</span> Sem fita métrica?
+                    </p>
+                    Use barbante ou fio: contorne o corpo e depois meça ao lado de uma régua escolar.
                 </div>
-                <p><b>1. Busto:</b> Passe a fita (ou o barbante) pelas costas e sobre a parte mais cheia do busto, respirando normalmente.</p>
-                <p><b>2. Cintura:</b> Meça a parte mais fina do seu tronco, geralmente dois dedos acima do umbigo.</p>
-                <p><b>3. Quadril:</b> Fique de pé com os pés juntos e contorne a fita na parte mais larga dos seus glúteos.</p>
+                <p><span class="text-white font-medium">Busto —</span> Pelas costas, sobre a parte mais cheia, respirando normalmente.</p>
+                <p><span class="text-white font-medium">Cintura —</span> Parte mais fina do tronco, dois dedos acima do umbigo.</p>
+                <p><span class="text-white font-medium">Quadril —</span> Pés juntos, contorne na parte mais larga dos glúteos.</p>
             </div>
-            <div class="p-4 border-t border-gray-800 bg-[#0a0a0a]">
-                <button onclick="fecharGuiaMedidas()" class="w-full bg-white text-black font-bold py-3 rounded">Entendi!</button>
+            <div class="px-5 pb-5">
+                <button onclick="window.fecharGuiaMedidas()" class="w-full bg-white text-black font-bold py-3.5 rounded-xl text-[10px] uppercase tracking-widest hover:bg-gray-100 transition-colors">
+                    Entendi!
+                </button>
             </div>
         </div>
     </div>
 
     <script type="module">
         import { inicializarLayout } from './layout.js';
-        
         document.addEventListener('DOMContentLoaded', async () => {
             inicializarLayout();
             setTimeout(async () => {
-                await import('./buscador.js');
+                await import('./buscador.js').catch(() => {});
                 await import('./vitrine-logic.js');
-            }, 100);
+            }, 80);
         });
     </script>
 </body>
