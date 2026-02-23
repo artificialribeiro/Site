@@ -1,6 +1,7 @@
 /**
- * Motor de Inteligência Artificial e PWA - Boutique Diniz
- * Roda 100% no lado do cliente (Navegador), conectando diretamente à Groq API.
+ * Motor de Inteligência Artificial — Boutique Diniz
+ * Roda 100% no lado do cliente, conectando diretamente à Groq API.
+ * Desenvolvido por Atlas Soluções — João Vitor
  */
 
 class MotorInteligencia {
@@ -10,33 +11,25 @@ class MotorInteligencia {
         this.iniciarPWA();
     }
 
-    // --- COFRE DA API GROQ (RODANDO DIRETO NO NAVEGADOR) ---
-    // Remonta o token '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' 
-    // na memória apenas no milissegundo em que vai fazer a requisição.
+    // Monta a chave Groq na memória apenas no milissegundo da requisição
     _obterChaveGroq() {
         const _p1 = 'Z3NrX1ZaQ3FXem9UUmtrWDZ3ejk=';
         const _p2 = 'VFVDTFdHZHliM0ZZSDlOaA==';
         const _p3 = 'UWdJMElsSzZ6a3F1MXcyNEFsWkk=';
-        
-        try {
-            return atob(_p1) + atob(_p2) + atob(_p3);
-        } catch (e) {
-            console.error("Falha ao montar chave da IA.");
-            return null;
-        }
+        try { return atob(_p1) + atob(_p2) + atob(_p3); }
+        catch { return null; }
     }
 
-    // --- 1. RASTREADOR DE GOSTOS (SALVA NO DISPOSITIVO DA CLIENTE) ---
+    // ─── RASTREADOR DE GOSTOS ───
     carregarPerfil() {
-        const dados = localStorage.getItem(this.storageKey);
-        if (dados) return JSON.parse(dados);
-        
-        return {
-            categoriasVistas: {},
-            tamanhosPreferidos: {},
-            coresPreferidas: {},
-            ultimosProdutos: []
-        };
+        try {
+            const dados = localStorage.getItem(this.storageKey);
+            return dados ? JSON.parse(dados) : this._perfilVazio();
+        } catch { return this._perfilVazio(); }
+    }
+
+    _perfilVazio() {
+        return { categoriasVistas: {}, tamanhosPreferidos: {}, coresPreferidas: {}, ultimosProdutos: [] };
     }
 
     salvarPerfil() {
@@ -44,133 +37,105 @@ class MotorInteligencia {
     }
 
     registrarVisualizacao(produto, varianteSelecionada = null) {
-        // Regista a categoria visualizada
-        if (produto.categoria && produto.categoria.nome) {
+        if (produto.categoria?.nome) {
             const cat = produto.categoria.nome;
             this.perfil.categoriasVistas[cat] = (this.perfil.categoriasVistas[cat] || 0) + 1;
         }
-
-        // Regista tamanhos e cores se o utilizador interagiu
         if (varianteSelecionada) {
-            const tam = varianteSelecionada.tamanho;
-            const cor = varianteSelecionada.cor;
-            if (tam) this.perfil.tamanhosPreferidos[tam] = (this.perfil.tamanhosPreferidos[tam] || 0) + 1;
-            if (cor) this.perfil.coresPreferidas[cor] = (this.perfil.coresPreferidas[cor] || 0) + 1;
+            const { tamanho, cor } = varianteSelecionada;
+            if (tamanho) this.perfil.tamanhosPreferidos[tamanho] = (this.perfil.tamanhosPreferidos[tamanho] || 0) + 1;
+            if (cor)     this.perfil.coresPreferidas[cor]        = (this.perfil.coresPreferidas[cor]        || 0) + 1;
         }
-
-        // Regista o ID do produto para o histórico (limite de 15)
-        this.perfil.ultimosProdutos = this.perfil.ultimosProdutos.filter(id => id !== produto.id);
-        this.perfil.ultimosProdutos.unshift(produto.id);
-        if (this.perfil.ultimosProdutos.length > 15) this.perfil.ultimosProdutos.pop();
-
+        this.perfil.ultimosProdutos = [produto.id, ...this.perfil.ultimosProdutos.filter(id => id !== produto.id)].slice(0, 15);
         this.salvarPerfil();
-        console.log("IA: Preferências da cliente atualizadas localmente.");
     }
 
-    // --- 2. CÉREBRO: CONEXÃO DIRETA COM A GROQ API ---
-    async obterRecomendacoesGroq(catalogoDisponivel) {
-        // Se a cliente for nova e não clicou em nada ainda, retorna vazio
+    // ─── CÉREBRO: GROQ API ───
+    async obterRecomendacoesGroq(catalogo) {
         if (this.perfil.ultimosProdutos.length === 0) return [];
+        const chave = this._obterChaveGroq();
+        if (!chave) return [];
 
-        const chaveGroq = this._obterChaveGroq();
-        if (!chaveGroq) return [];
-
-        // Monta o contexto para a IA baseado no histórico da cliente
         const contextoCliente = `
-            Categorias mais acessadas: ${JSON.stringify(this.perfil.categoriasVistas)}
-            Tamanhos que costuma clicar: ${JSON.stringify(this.perfil.tamanhosPreferidos)}
+            Categorias mais vistas: ${JSON.stringify(this.perfil.categoriasVistas)}
+            Tamanhos preferidos: ${JSON.stringify(this.perfil.tamanhosPreferidos)}
             Cores de interesse: ${JSON.stringify(this.perfil.coresPreferidas)}
         `;
-
-        // Prepara a lista de produtos disponíveis (apenas texto essencial para poupar tokens e acelerar a resposta)
-        const contextoCatalogo = catalogoDisponivel.map(p => 
-            `ID:${p.id} | Nome:${p.nome} | Cat:${p.categoria ? p.categoria.nome : 'N/A'}`
-        ).join('\n');
+        const contextoCatalogo = catalogo
+            .map(p => `ID:${p.id}|Nome:${p.nome}|Cat:${p.categoria?.nome || 'N/A'}`)
+            .join('\n');
 
         const prompt = `
             És a inteligência artificial da Boutique Diniz.
-            Perfil de navegação atual da cliente: ${contextoCliente}
-            
-            Produtos disponíveis na loja:
-            ${contextoCatalogo}
-            
-            Analisa o gosto da cliente e escolhe EXATAMENTE 4 IDs de produtos disponíveis que combinem com o perfil dela.
-            A tua resposta DEVE SER EXCLUSIVAMENTE um array JSON válido (exemplo: [5, 12, 8, 3]). Não escrevas nenhuma palavra ou texto adicional, apenas o array.
+            Perfil da cliente: ${contextoCliente}
+            Produtos disponíveis:\n${contextoCatalogo}
+            Escolhe EXATAMENTE 4 IDs de produtos que combinem com o perfil da cliente.
+            Responde SOMENTE com um array JSON válido. Exemplo: [5, 12, 8, 3]
+            Nenhum texto adicional.
         `;
 
         try {
-            console.log("IA: Consultando cérebro Groq diretamente do navegador...");
-            
-            // CONEXÃO DIRETA SEM SERVIDOR (Browser -> Groq)
             const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${chaveGroq}`,
+                    'Authorization': `Bearer ${chave}`,
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    model: "llama3-8b-8192", // Modelo da Groq otimizado para rapidez
-                    messages: [{ role: "user", content: prompt }],
-                    temperature: 0.1 // Temperatura baixa para respostas lógicas e exatas
+                    model: 'llama-3.1-8b-instant', // Modelo atual e suportado
+                    messages: [{ role: 'user', content: prompt }],
+                    temperature: 0.1,
+                    max_tokens: 60
                 })
             });
 
-            if (!response.ok) throw new Error("Falha na comunicação com a API da Groq");
+            if (!response.ok) throw new Error(`Groq ${response.status}`);
 
             const data = await response.json();
-            const respostaIA = data.choices[0].message.content;
-            
-            // Extrai rigorosamente apenas o Array JSON da resposta da IA
-            const matchArray = respostaIA.match(/\[(.*?)\]/);
-            
-            if (matchArray) {
-                const idsRecomendados = JSON.parse(matchArray[0]);
-                console.log("IA: Recomendações geradas com sucesso:", idsRecomendados);
-                return idsRecomendados;
-            } else {
-                return [];
+            const texto = data.choices?.[0]?.message?.content || '';
+            const match = texto.match(/\[[\d,\s]+\]/);
+            if (match) {
+                const ids = JSON.parse(match[0]);
+                console.log('IA: Recomendações geradas:', ids);
+                return ids;
             }
-
-        } catch (error) {
-            console.error("Motor IA silenciado (Erros de conexão direta).", error);
-            return []; // Retorna um array vazio para não quebrar a página
+            return [];
+        } catch (e) {
+            console.warn('Motor IA silenciado:', e.message);
+            return [];
         }
     }
 
-    // --- 3. SERVIÇOS DE PWA E NOTIFICAÇÃO (SERVICE WORKER) ---
+    // ─── PWA: SERVICE WORKER ───
     iniciarPWA() {
-        if ('serviceWorker' in navigator && 'PushManager' in window) {
+        if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                // Regista o worker que ficará ativo em segundo plano
                 navigator.serviceWorker.register('/sw.js')
-                    .then(reg => console.log('PWA: Service Worker instalado com sucesso.'))
-                    .catch(err => console.log('PWA: Service Worker não suportado neste ambiente local.'));
+                    .then(() => console.log('PWA: Service Worker registrado.'))
+                    .catch(() => {});
             });
         }
     }
 
     async pedirPermissaoNotificacao() {
         if (!('Notification' in window)) return false;
-        const permissao = await Notification.requestPermission();
-        return permissao === 'granted';
+        const p = await Notification.requestPermission();
+        return p === 'granted';
     }
 
-    enviarPushLocal(titulo, mensagem, urlRedirecionamento = '/') {
-        if (Notification.permission === 'granted') {
-            navigator.serviceWorker.ready.then(registration => {
-                registration.showNotification(titulo, {
-                    body: mensagem,
-                    icon: '/logo.png',
-                    badge: '/logo-badge.png',
-                    vibrate: [200, 100, 200],
-                    data: { url: urlRedirecionamento }
-                });
+    enviarPushLocal(titulo, mensagem, urlDestino = '/') {
+        if (Notification.permission !== 'granted') return;
+        navigator.serviceWorker.ready.then(reg => {
+            reg.showNotification(titulo, {
+                body: mensagem,
+                icon: '/logo.png',
+                badge: '/logo.png',
+                vibrate: [200, 100, 200],
+                data: { url: urlDestino }
             });
-        }
+        });
     }
 }
 
-// Cria a instância global para que possa ser utilizada em qualquer ficheiro HTML e JS
+// Instância global
 window.MotorIA = new MotorInteligencia();
-
-
