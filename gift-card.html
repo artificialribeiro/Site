@@ -364,7 +364,7 @@ let dadosCartao    = null;
 
 // ── VALOR ──
 window.selecionarValor = v => {
-  valorEscolhido = parseFloat(v);
+  valorEscolhido = parseFloat(v); window.valorEscolhido = valorEscolhido;
   document.getElementById('valorInput').value = '';
   atualizarValor();
   document.querySelectorAll('.val-btn').forEach(b =>
@@ -376,6 +376,7 @@ document.getElementById('valorInput').addEventListener('input', e => {
   if(!isNaN(v) && v >= 10){
     valorEscolhido = v;
     atualizarValor();
+    window.valorEscolhido = valorEscolhido;
     document.querySelectorAll('.val-btn').forEach(b => b.classList.remove('sel'));
   }
 });
