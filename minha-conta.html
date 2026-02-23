@@ -14,12 +14,11 @@
     <style>
         body { background-color: #000; color: #fff; font-family: 'Montserrat', sans-serif; }
         .font-logo { font-family: 'Satisfy', cursive; }
+        /* Inputs bloqueados com estilo de segurança */
         input:read-only { color: #666; cursor: not-allowed; border-color: #222; background-color: #050505; }
         .modal-animate { animation: slideUp 0.3s ease-out forwards; }
         @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
     </style>
-
-    <script src="seguranca.js"></script>
 </head>
 <body class="bg-[#000000] text-white min-h-screen flex flex-col antialiased">
 
@@ -27,14 +26,14 @@
 
     <main class="flex-grow pt-8 pb-16 max-w-4xl mx-auto w-full px-4">
         
-        <div class="mb-10 text-center md:text-left">
+        <div class="mb-10 text-center md:text-left border-b border-gray-900 pb-4">
             <h1 class="text-4xl font-light text-white font-logo">Minha Conta</h1>
-            <p class="text-gray-500 text-xs uppercase tracking-widest mt-2">Gerencie seus dados e endereços de entrega</p>
+            <p class="text-gray-500 text-xs uppercase tracking-widest mt-2">Gerencie os seus dados e endereços de entrega</p>
         </div>
 
         <div id="loadingState" class="flex items-center justify-center py-20 flex-col gap-4">
             <span class="material-symbols-outlined animate-spin text-4xl text-gray-500">sync</span>
-            <p class="text-xs uppercase tracking-widest text-gray-500">Carregando seus dados...</p>
+            <p class="text-xs uppercase tracking-widest text-gray-500">A carregar o seu perfil...</p>
         </div>
 
         <div id="accountContent" class="hidden flex-col gap-8">
@@ -46,13 +45,13 @@
                 
                 <form id="formDadosPessoais" class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div class="md:col-span-2">
-                        <label class="block text-[10px] uppercase tracking-widest text-gray-500 mb-2">Nome Completo (Bloqueado)</label>
-                        <input type="text" id="perfilNome" readonly class="w-full border border-gray-800 rounded px-4 py-3 text-sm outline-none">
+                        <label class="block text-[10px] uppercase tracking-widest text-gray-500 mb-2">Nome Completo (Bloqueado por Segurança)</label>
+                        <input type="text" id="perfilNome" readonly class="w-full border border-gray-800 rounded px-4 py-3 text-sm outline-none" title="Para alterar o nome, contacte o suporte.">
                     </div>
                     
                     <div>
-                        <label class="block text-[10px] uppercase tracking-widest text-gray-500 mb-2">CPF (Bloqueado)</label>
-                        <input type="text" id="perfilCpf" readonly class="w-full border border-gray-800 rounded px-4 py-3 text-sm outline-none">
+                        <label class="block text-[10px] uppercase tracking-widest text-gray-500 mb-2">CPF (Bloqueado por Segurança)</label>
+                        <input type="text" id="perfilCpf" readonly class="w-full border border-gray-800 rounded px-4 py-3 text-sm outline-none" title="O CPF não pode ser alterado.">
                     </div>
 
                     <div>
@@ -65,8 +64,8 @@
                         <input type="email" id="perfilEmail" class="w-full bg-[#0a0a0a] border border-gray-800 rounded px-4 py-3 text-sm text-white outline-none focus:border-green-600 transition-colors">
                     </div>
 
-                    <div class="md:col-span-2 flex justify-end mt-2">
-                        <button type="submit" id="btnSalvarPerfil" class="bg-white text-black px-8 py-3 rounded text-xs font-bold uppercase tracking-widest hover:bg-gray-200 transition-all flex items-center gap-2">
+                    <div class="md:col-span-2 flex justify-end mt-2 border-t border-gray-900 pt-4">
+                        <button type="submit" id="btnSalvarPerfil" class="bg-white text-black px-8 py-3 rounded text-xs font-bold uppercase tracking-widest hover:bg-gray-200 transition-all flex items-center justify-center gap-2">
                             <span class="material-symbols-outlined text-[18px]">save</span> Atualizar Perfil
                         </button>
                     </div>
@@ -78,8 +77,8 @@
                     <h2 class="text-sm uppercase tracking-widest text-gray-400 flex items-center gap-2">
                         <span class="material-symbols-outlined text-[18px]">location_on</span> Meus Endereços
                     </h2>
-                    <button onclick="window.abrirModalEndereco()" class="text-[10px] font-bold uppercase tracking-widest text-green-500 flex items-center gap-1 hover:text-green-400">
-                        <span class="material-symbols-outlined text-[16px]">add</span> Novo Endereço
+                    <button onclick="window.abrirModalEndereco()" class="text-[10px] font-bold uppercase tracking-widest text-green-500 flex items-center gap-1 hover:text-green-400 border border-green-900 px-3 py-1.5 rounded-full bg-green-900/10 transition-colors">
+                        <span class="material-symbols-outlined text-[14px]">add</span> Nova Morada
                     </button>
                 </div>
                 
@@ -92,23 +91,25 @@
 
     <div id="modalEndereco" class="fixed inset-0 bg-black/95 z-[999] hidden items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-[#0a0a0a] border border-gray-800 w-full max-w-md rounded-xl p-6 shadow-2xl modal-animate">
-            <h3 class="text-white font-bold uppercase tracking-widest mb-6">Cadastrar Endereço</h3>
+            <h3 class="text-white font-bold uppercase tracking-widest mb-6 border-b border-gray-900 pb-4 flex items-center gap-2">
+                <span class="material-symbols-outlined text-green-500">home_pin</span> Cadastrar Morada
+            </h3>
             <form id="formEndereco" class="space-y-4">
-                <input type="text" id="endRua" placeholder="Rua / Logradouro" required class="w-full bg-[#111] border border-gray-800 rounded px-4 py-3 text-sm text-white outline-none">
+                <input type="text" id="endRua" placeholder="Rua / Logradouro" required class="w-full bg-[#111] border border-gray-800 rounded px-4 py-3 text-sm text-white outline-none focus:border-green-500 transition-colors">
                 <div class="grid grid-cols-3 gap-4">
-                    <input type="text" id="endNumero" placeholder="Nº" required class="w-full bg-[#111] border border-gray-800 rounded px-4 py-3 text-sm text-white outline-none">
-                    <input type="text" id="endComplemento" placeholder="Complemento" class="col-span-2 w-full bg-[#111] border border-gray-800 rounded px-4 py-3 text-sm text-white outline-none">
+                    <input type="text" id="endNumero" placeholder="Nº" required class="w-full bg-[#111] border border-gray-800 rounded px-4 py-3 text-sm text-white outline-none focus:border-green-500 transition-colors">
+                    <input type="text" id="endComplemento" placeholder="Apto, Bloco..." class="col-span-2 w-full bg-[#111] border border-gray-800 rounded px-4 py-3 text-sm text-white outline-none focus:border-green-500 transition-colors">
                 </div>
-                <input type="text" id="endBairro" placeholder="Bairro" required class="w-full bg-[#111] border border-gray-800 rounded px-4 py-3 text-sm text-white outline-none">
+                <input type="text" id="endBairro" placeholder="Bairro" required class="w-full bg-[#111] border border-gray-800 rounded px-4 py-3 text-sm text-white outline-none focus:border-green-500 transition-colors">
                 <div class="grid grid-cols-2 gap-4">
-                    <input type="text" id="endCidade" placeholder="Cidade" required class="w-full bg-[#111] border border-gray-800 rounded px-4 py-3 text-sm text-white outline-none">
-                    <input type="text" id="endEstado" placeholder="UF" maxlength="2" required class="w-full bg-[#111] border border-gray-800 rounded px-4 py-3 text-sm text-white outline-none uppercase">
+                    <input type="text" id="endCidade" placeholder="Cidade" required class="w-full bg-[#111] border border-gray-800 rounded px-4 py-3 text-sm text-white outline-none focus:border-green-500 transition-colors">
+                    <input type="text" id="endEstado" placeholder="UF" maxlength="2" required class="w-full bg-[#111] border border-gray-800 rounded px-4 py-3 text-sm text-white outline-none uppercase focus:border-green-500 transition-colors">
                 </div>
-                <input type="text" id="endCep" placeholder="CEP (00000-000)" required class="w-full bg-[#111] border border-gray-800 rounded px-4 py-3 text-sm text-white outline-none">
+                <input type="text" id="endCep" placeholder="CEP (00000-000)" required class="w-full bg-[#111] border border-gray-800 rounded px-4 py-3 text-sm text-white outline-none focus:border-green-500 transition-colors">
                 
-                <div class="flex gap-3 pt-4">
-                    <button type="button" onclick="window.fecharModalEndereco()" class="flex-1 bg-gray-900 text-gray-400 py-3 rounded text-xs font-bold uppercase">Cancelar</button>
-                    <button type="submit" class="flex-1 bg-white text-black py-3 rounded text-xs font-bold uppercase">Salvar</button>
+                <div class="flex gap-3 pt-6 border-t border-gray-900 mt-2">
+                    <button type="button" onclick="window.fecharModalEndereco()" class="flex-1 bg-gray-900 text-gray-400 py-3 rounded text-xs font-bold uppercase tracking-widest hover:bg-gray-800 transition-colors">Cancelar</button>
+                    <button type="submit" class="flex-1 bg-green-600 text-white py-3 rounded text-xs font-bold uppercase tracking-widest hover:bg-green-500 transition-colors shadow-lg shadow-green-900/20">Salvar</button>
                 </div>
             </form>
         </div>
@@ -119,15 +120,7 @@
     <script type="module">
         import { inicializarLayout } from './layout.js';
         inicializarLayout(); 
-        
-        // Carregamento atrasado para evitar erros de token no mobile
-        setTimeout(() => {
-            import('./minha-conta-logic.js').catch(e => {
-                console.error("Falha ao carregar motor de conta:", e);
-                const loader = document.getElementById('loadingState');
-                if(loader) loader.innerHTML = '<p class="text-red-500 font-bold">Erro ao iniciar página. Recarregue.</p>';
-            });
-        }, 250);
     </script>
+    <script type="module" src="minha-conta-logic.js"></script>
 </body>
 </html>

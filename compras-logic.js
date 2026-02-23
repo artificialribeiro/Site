@@ -6,7 +6,8 @@ const ASAAS_SECURITY_KEY = "1526105";
 const loadingState = document.getElementById('loadingState');
 const ordersContainer = document.getElementById('ordersContainer');
 const emptyState = document.getElementById('emptyState');
-const cpfCompradorInput = document.getElementById('novoCpfComprador');
+// CPF input — referenced dynamically to ensure modal is rendered
+function getCpfInput() { return document.getElementById('novoCpfComprador'); }
 
 let clienteLogado = null;
 let pedidoEmPagamento = null;
@@ -393,6 +394,8 @@ function renderizarPedidos(pedidos) {
     if (loadingState) loadingState.classList.add('hidden');
     if (ordersContainer) {
         ordersContainer.innerHTML = html;
+        ordersContainer.style.display = 'flex';
+        ordersContainer.style.flexDirection = 'column';
         ordersContainer.classList.remove('hidden');
         ordersContainer.classList.add('flex');
     }
@@ -437,6 +440,7 @@ window.verificarStatusAsaas = async function(pedidoId, idExterno) {
                 headers: { ...headers, 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status_pagamento: 'aprovado' })
             });
+            await baixarEstoquePedido(pedidoId); // Baixa estoque ao confirmar
             alert("O Banco confirmou o pagamento! O seu pedido foi atualizado e está pronto para separação.");
             window.location.reload();
         } else {
@@ -583,8 +587,12 @@ window.abrirOrdemRetirada = function(pedidoId) {
 // ==========================================
 // 5. MÁQUINA DE RE-PAGAMENTO
 // ==========================================
-if(cpfCompradorInput) {
-    cpfCompradorInput.addEventListener('input', function (e) {
+// CPF mask — applied dynamically when modal opens
+function aplicarMascaraCPF() {
+    const el = getCpfInput();
+    if (!el || el._maskApplied) return;
+    el._maskApplied = true;
+    el.addEventListener('input', function (e) {
         let v = e.target.value.replace(/\D/g,"");
         v = v.replace(/(\d{3})(\d)/,"$1.$2");
         v = v.replace(/(\d{3})(\d)/,"$1.$2");
@@ -598,8 +606,20 @@ window.abrirModalPagamento = function(pedidoId, total) {
     document.getElementById('pagPedidoId').innerText = `#${pedidoId}`;
     document.getElementById('novoValorTotal').innerText = `R$ ${parseFloat(total).toFixed(2).replace('.', ',')}`;
     
-    if(clienteLogado && clienteLogado.cpf) {
-        cpfCompradorInput.value = clienteLogado.cpf;
+    // Auto-preenche o CPF do cliente logado
+    const cpfInput = getCpfInput();
+    if (cpfInput) {
+        aplicarMascaraCPF();
+        if (clienteLogado && clienteLogado.cpf) {
+            // Formata o CPF antes de preencher
+            let cpfFormatado = String(clienteLogado.cpf).replace(/\D/g, '');
+            cpfFormatado = cpfFormatado.replace(/(\d{3})(\d)/, '$1.$2');
+            cpfFormatado = cpfFormatado.replace(/(\d{3})(\d)/, '$1.$2');
+            cpfFormatado = cpfFormatado.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+            cpfInput.value = cpfFormatado;
+        } else {
+            cpfInput.value = '';
+        }
     }
 
     document.getElementById('novoFormCartao').classList.add('hidden');
@@ -647,10 +667,10 @@ window.selecionarNovaForma = function(metodo) {
 window.processarNovoPagamento = async function() {
     if (!formaSelecionada || !pedidoEmPagamento) return;
     
-    const cpfLimpo = cpfCompradorInput.value.replace(/\D/g, '');
+    const cpfLimpo = getCpfInput().value.replace(/\D/g, '');
     if (cpfLimpo.length !== 11) {
         alert("Preencha um CPF válido de 11 dígitos para autorizar o banco.");
-        cpfCompradorInput.focus();
+        getCpfInput().focus();
         return;
     }
 
@@ -691,6 +711,7 @@ window.processarNovoPagamento = async function() {
         } else if (formaSelecionada === 'credit' || formaSelecionada === 'debit') {
             const num = document.getElementById('novoCcNumero').value.replace(/\D/g, '');
             const val = document.getElementById('novoCcValidade').value.split('/');
+            const cvv = document.getElementById('novoCcCvv').value; // CVC capturado
             const parcelas = formaSelecionada === 'credit' ? parseInt(document.getElementById('novoCcParcelas').value) : 1;
 
             const payloadCartao = {
@@ -698,7 +719,7 @@ window.processarNovoPagamento = async function() {
                 postalCode: '00000000', 
                 addressNumber: '0',
                 installments: parcelas,
-                card: { holderName: document.getElementById('novoCcNome').value.toUpperCase(), number: num, expiryMonth: val[0], expiryYear: val[1].length===2 ? `20${val[1]}`:val[1], ccv: document.getElementById('novoCcCvv').value }
+                card: { holderName: document.getElementById('novoCcNome').value.toUpperCase(), number: num, expiryMonth: val[0], expiryYear: val[1].length===2 ? `20${val[1]}`:val[1], ccv: cvv }
             };
             
             const endpoint = formaSelecionada === 'credit' ? '/pay/credit-card' : '/pay/debit-card';
@@ -715,6 +736,7 @@ window.processarNovoPagamento = async function() {
                 return;
             } else {
                 await atualizarIDPagamentoNaAPI('aprovado', paymentIdExterno);
+                await baixarEstoquePedido(pedidoEmPagamento.id); // Baixa estoque ao confirmar
                 alert("Pagamento Confirmado na hora!");
                 window.location.reload();
             }
@@ -744,6 +766,7 @@ window.processarNovoPagamento = async function() {
             if (!resResgate.ok || !dadosResgate.success) throw new Error(dadosResgate.message || 'Erro ao resgatar Gift Card.');
 
             await atualizarIDPagamentoNaAPI('aprovado', `GIFT-${cartaoId}`);
+            await baixarEstoquePedido(pedidoEmPagamento.id); // Baixa estoque ao confirmar
             alert("Gift Card validado e pagamento confirmado!");
             window.location.reload();
         }
@@ -759,6 +782,20 @@ window.processarNovoPagamento = async function() {
 function mapearTipoPagamento(forma) {
     const mapa = { pix: 'pix', credit: 'credito', debit: 'debito', boleto: 'boleto', giftcard: 'giftcard' };
     return mapa[forma] || forma;
+}
+
+// Baixa o estoque dos itens do pedido após pagamento confirmado
+async function baixarEstoquePedido(pedidoId) {
+    try {
+        const headers = await getAuthHeaders();
+        await fetch(`${API_CONFIG.baseUrl}/api/pedidos/${pedidoId}/baixar-estoque`, {
+            method: 'POST',
+            headers: { ...headers, 'Content-Type': 'application/json' }
+        });
+    } catch (e) {
+        // Silencioso — não bloqueia o fluxo principal
+        console.warn('Aviso: não foi possível baixar estoque automaticamente:', e);
+    }
 }
 
 async function atualizarIDPagamentoNaAPI(status, idExternoGateway) {
@@ -792,6 +829,7 @@ function exibirNovoPix(dadosPix) {
             if (d.success && d.paid === true) {
                 clearInterval(pollingPix);
                 await atualizarIDPagamentoNaAPI('aprovado', dadosPix.paymentId);
+                await baixarEstoquePedido(pedidoEmPagamento.id); // Baixa estoque ao confirmar
                 alert("PIX Recebido! Seu pedido está em separação.");
                 window.location.reload();
             }
@@ -816,6 +854,8 @@ window.copiarNovoPix = function() {
 // ==========================================
 // 7. POP-UP PROATIVO (COMPRA PENDENTE)
 // ==========================================
+let timerFechamentoModal = null;
+
 window.abrirModalPendente = function(pedido) {
     document.getElementById('pendenteId').innerText = `#${pedido.id}`;
     document.getElementById('pendenteTotal').innerText = `R$ ${parseFloat(pedido.total).toFixed(2).replace('.', ',')}`;
@@ -864,11 +904,29 @@ window.abrirModalPendente = function(pedido) {
         window.abrirModalPagamento(pedido.id, pedido.total);
     };
 
+    // Botão de Ordem de Retirada — só aparece se o pedido for de retirada
+    const btnOrdem = document.getElementById('btnPendenteOrdem');
+    if (pedido.tipo_entrega === 'retirada') {
+        btnOrdem.classList.remove('hidden');
+        btnOrdem.classList.add('flex');
+        btnOrdem.onclick = () => { window.fecharModalPendente(); window.abrirOrdemRetirada(pedido.id); };
+    } else {
+        btnOrdem.classList.add('hidden');
+        btnOrdem.classList.remove('flex');
+    }
+
     document.getElementById('modalPendente').classList.remove('hidden');
     document.getElementById('modalPendente').classList.add('flex');
+
+    // Fecha automaticamente após 15 minutos — quem não pagou não vai pagar
+    if (timerFechamentoModal) clearTimeout(timerFechamentoModal);
+    timerFechamentoModal = setTimeout(() => {
+        window.fecharModalPendente();
+    }, 15 * 60 * 1000);
 }
 
 window.fecharModalPendente = function() {
     document.getElementById('modalPendente').classList.add('hidden');
     document.getElementById('modalPendente').classList.remove('flex');
+    if (timerFechamentoModal) { clearTimeout(timerFechamentoModal); timerFechamentoModal = null; }
 }

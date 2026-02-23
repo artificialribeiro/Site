@@ -35,10 +35,15 @@ function verificarSessaoAtiva() {
                 // Esconde o formulário normal e mostra o cartão de boas-vindas
                 loginState.classList.add('hidden');
                 loggedInState.classList.remove('hidden');
+
+                // GARANTIA: Se o navegador apagou a sessão universal, restaura-a a partir daqui
+                if (!localStorage.getItem('usuario')) {
+                    salvarSessaoUniversal(sessao.usuario);
+                }
             }
         } catch (error) {
             console.error("Sessão corrompida ou inválida.", error);
-            localStorage.removeItem('boutique_diniz_session'); // Limpa o erro
+            limparSessoes(); // Limpa o erro
         }
     }
 }
@@ -53,83 +58,100 @@ if (btnContinue) {
 
 if (btnLogout) {
     btnLogout.addEventListener('click', () => {
-        // Apaga a sessão e volta para o formulário limpo
-        localStorage.removeItem('boutique_diniz_session');
+        // Apaga TODAS as sessões para um logout limpo
+        limparSessoes();
         loggedInState.classList.add('hidden');
         loginState.classList.remove('hidden');
+        cpfInput.value = '';
+        senhaInput.value = '';
         cpfInput.focus();
     });
 }
 
+// Função auxiliar para garantir que tudo é limpo no logout
+function limparSessoes() {
+    localStorage.removeItem('boutique_diniz_session');
+    localStorage.removeItem('usuario');
+    sessionStorage.removeItem('usuario');
+}
 
 // --- 1. MÁSCARA DE CPF ---
-cpfInput.addEventListener('input', (e) => {
-    let value = e.target.value.replace(/\D/g, "");
-    if (value.length > 11) value = value.slice(0, 11);
-    if (value.length > 9) {
-        value = value.replace(/^(\d{3})(\d{3})(\d{3})(\d{2}).*/, "$1.$2.$3-$4");
-    } else if (value.length > 6) {
-        value = value.replace(/^(\d{3})(\d{3})(\d{3}).*/, "$1.$2.$3");
-    } else if (value.length > 3) {
-        value = value.replace(/^(\d{3})(\d{3}).*/, "$1.$2");
-    }
-    e.target.value = value;
-});
+if (cpfInput) {
+    cpfInput.addEventListener('input', (e) => {
+        let value = e.target.value.replace(/\D/g, "");
+        if (value.length > 11) value = value.slice(0, 11);
+        if (value.length > 9) {
+            value = value.replace(/^(\d{3})(\d{3})(\d{3})(\d{2}).*/, "$1.$2.$3-$4");
+        } else if (value.length > 6) {
+            value = value.replace(/^(\d{3})(\d{3})(\d{3}).*/, "$1.$2.$3");
+        } else if (value.length > 3) {
+            value = value.replace(/^(\d{3})(\d{3}).*/, "$1.$2");
+        }
+        e.target.value = value;
+    });
+}
 
 // --- 2. FUNÇÃO DE LOGIN ---
-loginForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    
-    mostrarErro(false);
-    btnSubmit.innerText = 'Autenticando...';
-    btnSubmit.disabled = true;
+if (loginForm) {
+    loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        mostrarErro(false);
+        btnSubmit.innerText = 'Autenticando...';
+        btnSubmit.disabled = true;
 
-    const cpfLimpo = cpfInput.value.replace(/\D/g, "");
-    const senha = senhaInput.value;
+        const cpfLimpo = cpfInput.value.replace(/\D/g, "");
+        const senha = senhaInput.value;
 
-    try {
-        const authHeaders = await getAuthHeaders();
+        try {
+            const authHeaders = await getAuthHeaders();
 
-        const response = await fetch(`${API_CONFIG.baseUrl}/api/clientes/login`, {
-            method: 'POST',
-            headers: authHeaders,
-            body: JSON.stringify({
-                cpf: cpfLimpo,
-                senha: senha
-            })
-        });
+            // Chamada na API v3 (documentada no PDF)
+            const response = await fetch(`${API_CONFIG.baseUrl}/api/clientes/login`, {
+                method: 'POST',
+                headers: authHeaders,
+                body: JSON.stringify({
+                    cpf: cpfLimpo,
+                    senha: senha
+                })
+            });
 
-        const result = await response.json();
+            const result = await response.json();
 
-        if (response.ok && result.success) {
-            salvarSessaoSegura(result.data);
-            
-            btnSubmit.innerText = 'Sucesso!';
-            setTimeout(() => {
-                // REDIRECIONA PARA VERIFICAÇÃO DE SEGURANÇA
-                window.location.href = 'verificacao.html';
-            }, 500);
+            if (response.ok && result.success) {
+                
+                // SALVAMENTO DUPLO: Mantém o original e cria o universal para as outras páginas
+                salvarSessaoSegura(result.data);
+                salvarSessaoUniversal(result.data);
+                
+                btnSubmit.innerText = 'Sucesso!';
+                setTimeout(() => {
+                    // REDIRECIONA PARA VERIFICAÇÃO DE SEGURANÇA
+                    window.location.href = 'verificacao.html';
+                }, 500);
 
-        } else {
-            throw new Error(result.message || 'CPF ou senha inválidos.');
+            } else {
+                throw new Error(result.message || 'CPF ou senha inválidos.');
+            }
+
+        } catch (error) {
+            console.error("Erro no login:", error);
+            mostrarErro(error.message || "Erro ao conectar com o servidor.");
+            btnSubmit.innerText = 'ENTRAR';
+            btnSubmit.disabled = false;
         }
+    });
+}
 
-    } catch (error) {
-        console.error("Erro no login:", error);
-        mostrarErro(error.message || "Erro ao conectar com o servidor.");
-        btnSubmit.innerText = 'ENTRAR';
-        btnSubmit.disabled = false;
-    }
-});
-
-// --- 3. SALVAMENTO SEGURO (Storage) ---
+// --- 3. SALVAMENTO SEGURO (MANTIDO EXATAMENTE COMO ERA) ---
 function salvarSessaoSegura(userData) {
     const sessao = {
         usuario: {
             id: userData.id,
-            nome: userData.nome_completo,
+            nome: userData.nome_completo || userData.nome,
             email: userData.email,
-            celular: userData.celular
+            celular: userData.celular,
+            cpf: userData.cpf // Adicionado por segurança para a Minha Conta
         },
         token_acesso: new Date().getTime(),
         logado: true
@@ -140,7 +162,19 @@ function salvarSessaoSegura(userData) {
     localStorage.setItem('boutique_diniz_session', dadosCodificados);
 }
 
-// Helper de erro
+// --- NOVO: SALVAMENTO UNIVERSAL (PARA AS PÁGINAS 'MINHA CONTA' E 'PEDIDOS') ---
+function salvarSessaoUniversal(userData) {
+    // Guarda o objeto completo (id, nome_completo, cpf, email, celular) num formato fácil de ler
+    const dadosString = JSON.stringify(userData);
+    
+    // Salva no localStorage (não apaga quando muda de página no Qamar IDE)
+    localStorage.setItem('usuario', dadosString);
+    
+    // Salva no sessionStorage (por garantia de compatibilidade com outros scripts)
+    sessionStorage.setItem('usuario', dadosString);
+}
+
+// Helper de erro visual
 function mostrarErro(mensagem) {
     if (!mensagem) {
         errorMsg.style.display = 'none';

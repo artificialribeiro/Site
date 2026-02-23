@@ -2,7 +2,7 @@
  * Configurações da API
  */
 const API_CONFIG = {
-    baseUrl: "https://3000-iovts1yvu8d1p7wtx13ei-1033211b.us2.manus.computer",
+    baseUrl: "https://3000-iknk5ldddsf3ol72h88dv-b83a7f78.us1.manus.computer",
     staticKey: "1526", // Sua chave padrão
     endpoints: {
         getToken: "/api/token",
